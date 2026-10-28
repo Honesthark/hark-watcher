@@ -1,0 +1,30 @@
+name: Hark Watcher
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: watcher
+  cancel-in-progress: false
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save ethers@6
+      - run: python3 run.py
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT: ${{ secrets.TG_CHAT }}
+      - name: Save state
+        run: |
+          git config user.name "hark-watcher"
+          git config user.email "actions@users.noreply.github.com"
+          git add state
+          git diff --cached --quiet || (git commit -m "state" && git pull --rebase && git push)
