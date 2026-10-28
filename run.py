@@ -4,6 +4,7 @@ import json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 TOKEN = os.environ.get("TG_TOKEN", "")
 CHAT = os.environ.get("TG_CHAT", "")
 DRY = "--dry" in sys.argv
+if not DRY and not (TOKEN and CHAT): sys.exit("TG_TOKEN / TG_CHAT secret missing")
 RL = "state/ratelimit.json"
 rl = json.load(open(RL)) if os.path.exists(RL) else {}
 FOOT = "Not a trade signal on its own. Keep size small, 3-5x max. MEXC data; Bybit may differ."
