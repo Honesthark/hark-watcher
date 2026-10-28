@@ -114,7 +114,11 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
                     "ALERT SETUP B": "Setup B, blow-off rejected", "ALERT RETEST FAILED": "Setup B, failed retest"}[ev]
             if sym in ("Q", "AIN") and ev in ("ALERT REJECTION", "ALERT SETUP A") and not allow(sym + ev, 3 if sym == "AIN" else 2): continue
             cand, plan = (body.split(" Short plan: ") + [""])[:2]
-            send(f"🔻 {sym} SHORT SIGNAL · {name}\n{cand}\nPlan: {plan}\nLive {live}\n{NOTE[sym]} Keep size small, 3-5x max. MEXC prices; Bybit may differ slightly. I'll ping you when TP or SL is hit.")
+            e0 = num(r"entry", plan); late = ""
+            try:
+                if e0 and float(live) < e0 * 0.98: late = " Price is already below entry, so wait for a bounce toward entry rather than chasing."
+            except Exception: pass
+            send(f"🔻 {sym} SHORT SIGNAL · {name}\n{cand}\nPlan: {plan}\nLive {live}.{late}\n{NOTE[sym]} Keep size small, 3-5x max. MEXC prices; Bybit may differ slightly. I'll ping you when TP or SL is hit.")
             track(sym, name, plan.replace("SL above", "SL"))
         elif ev == "ALERT BREAK":
             send(f"⚠️ {sym} HEADS-UP (not an entry yet)\n{body}\nLive {live}")
