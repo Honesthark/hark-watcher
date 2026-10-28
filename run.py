@@ -42,6 +42,64 @@ def fmt(n):
     return f"{n/1e6:.2f}M" if n >= 1e6 else f"{n/1e3:.1f}k" if n >= 1e3 else f"{n:.0f}"
 
 
+# ---- trade tracker: follow every signal sent until TP2, SL or 48h ----
+TR = "state/trades.json"
+trades = json.load(open(TR)) if os.path.exists(TR) else []
+
+
+def num(pat, text):
+    m = re.search(pat + r"\s*~?\s*([0-9]*\.?[0-9]+(?:e-?\d+)?)", text, re.I)
+    return float(m.group(1)) if m else None
+
+
+def track(sym, label, text):
+    e, sl, t1, t2 = num(r"entry", text), num(r"(?:SL|stop)(?: above)?", text), num(r"TP1", text), num(r"TP2", text)
+    if None in (e, sl, t1, t2): print("track skip", sym); return
+    trades.append({"sym": sym, "label": label, "entry": e, "sl": sl, "tp1": t1, "tp2": t2,
+                   "t": time.time(), "chk": time.time(), "tp1hit": False})
+
+
+def kl(sym, since):
+    u = f"https://contract.mexc.com/api/v1/contract/kline/{sym}_USDT?interval=Min15&start={int(since)}"
+    d = json.load(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "curl/8.5.0"}), timeout=20))["data"]
+    return list(zip(d["time"], d["high"], d["low"], d["close"]))
+
+
+def check_trades():
+    keep = []
+    for tr in trades:
+        try:
+            ks = [k for k in kl(tr["sym"], tr["chk"] - 900) if k[0] + 900 > tr["chk"]]
+        except Exception as ex:
+            print("tracker", tr["sym"], ex); keep.append(tr); continue
+        done = False; last = ks[-1][3] if ks else "?"
+        stop = tr["entry"] if tr["tp1hit"] else tr["sl"]
+        for _, h, l, c in ks:
+            if h >= stop:
+                if tr["tp1hit"]:
+                    send(f"➖ {tr['sym']} {tr['label']}: price came back to entry {tr['entry']} after TP1. Closed at breakeven on the rest, with TP1 profit kept. Live {last}")
+                else:
+                    pct = (tr['sl'] - tr['entry']) / tr['entry'] * 100
+                    send(f"❌ {tr['sym']} {tr['label']}: STOP HIT at {tr['sl']} (about -{pct:.1f}% from entry {tr['entry']}, before leverage). Trade closed. Live {last}")
+                done = True; break
+            if not tr["tp1hit"] and l <= tr["tp1"]:
+                tr["tp1hit"] = True; stop = tr["entry"]
+                pct = (tr['entry'] - tr['tp1']) / tr['entry'] * 100
+                send(f"✅ {tr['sym']} {tr['label']}: TP1 HIT at {tr['tp1']} (+{pct:.1f}% from entry {tr['entry']}, before leverage). Consider taking partial profit and moving the stop to entry. Still tracking TP2 {tr['tp2']}. Live {last}")
+            if tr["tp1hit"] and l <= tr["tp2"]:
+                pct = (tr['entry'] - tr['tp2']) / tr['entry'] * 100
+                send(f"🎯 {tr['sym']} {tr['label']}: TP2 HIT at {tr['tp2']} (+{pct:.1f}% from entry {tr['entry']}, before leverage). Trade complete. Live {last}")
+                done = True; break
+        if ks: tr["chk"] = ks[-1][0]
+        if not done and time.time() - tr["t"] > 48 * 3600:
+            send(f"⌛ {tr['sym']} {tr['label']}: no TP2 or stop after 48h, so I've stopped tracking it. Live {last}"); done = True
+        if not done: keep.append(tr)
+    trades[:] = keep
+
+
+check_trades()
+
+
 # ---- setup watchers ----
 for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "irys")]:
     out = run(["python3", f"scripts/{script}.py"])
@@ -56,7 +114,8 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
                     "ALERT SETUP B": "Setup B, blow-off rejected", "ALERT RETEST FAILED": "Setup B, failed retest"}[ev]
             if sym in ("Q", "AIN") and ev in ("ALERT REJECTION", "ALERT SETUP A") and not allow(sym + ev, 3 if sym == "AIN" else 2): continue
             cand, plan = (body.split(" Short plan: ") + [""])[:2]
-            send(f"🔻 {sym} SHORT SIGNAL · {name}\n{cand}\nPlan: {plan}\nLive {live}\n{NOTE[sym]} Keep size small, 3-5x max. MEXC prices; Bybit may differ slightly.")
+            send(f"🔻 {sym} SHORT SIGNAL · {name}\n{cand}\nPlan: {plan}\nLive {live}\n{NOTE[sym]} Keep size small, 3-5x max. MEXC prices; Bybit may differ slightly. I'll ping you when TP or SL is hit.")
+            track(sym, name, plan.replace("SL above", "SL"))
         elif ev == "ALERT BREAK":
             send(f"⚠️ {sym} HEADS-UP (not an entry yet)\n{body}\nLive {live}")
         elif ev == "MOMENTUM":
@@ -80,7 +139,8 @@ for l in run(["python3", "scripts/gainers.py"]).splitlines():
         why = (f"Lower-high bounce failed: the 1h candle to {t} WAT topped under the 24h high {g('high')} and closed weak at {g('c')}. Riskier than a top rejection, since the trend can resume." if lh else
                f"1h candle to {t} WAT tagged the 24h high {g('high')} and closed red at {g('c')}, below the prior hour's low.")
         send(f"🔻 SHORT SIGNAL{' (fade)' if lh else ''}: {sym} (+{ch}% 24h)\n{why} Funding {fund:+.3f}%.\n"
-             f"Entry {entry} · SL {g('stop')} · TP1 {g('tp1')} · TP2 {g('tp2')}\nLive {live}.{played}{warn}\nUse 3-5x max and small size; these coins wick 20%+. MEXC prices.")
+             f"Entry {entry} · SL {g('stop')} · TP1 {g('tp1')} · TP2 {g('tp2')}\nLive {live}.{played}{warn}\nUse 3-5x max and small size; these coins wick 20%+. MEXC prices." + ("" if played else " I'll ping you when TP or SL is hit."))
+        if not played: track(sym, "fade short" if lh else "top short", f"entry {entry.split('-')[0]} SL {g('stop')} TP1 {g('tp1')} TP2 {g('tp2')}")
     except Exception as e:
         print("gainer parse", e, l)
 
@@ -120,4 +180,5 @@ for j in moves.values():
          f"Read: {READ.get(j['kind'], '')} {pos}\n{FOOT}\n{txl}")
 
 json.dump(rl, open(RL, "w"))
+json.dump(trades, open(TR, "w"))
 print("done")
