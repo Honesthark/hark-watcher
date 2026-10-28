@@ -66,7 +66,8 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
 
 # ---- gainers short watcher ----
 for l in run(["python3", "scripts/gainers.py"]).splitlines():
-    if not l.startswith("ALERT "): continue
+    if not (l.startswith("ALERT ") or l.startswith("ALERT2 ")): continue
+    lh = l.startswith("ALERT2")
     try:
         sym = l.split()[1].replace("_USDT", "")
         g = lambda k: re.search(k + r" ([\-0-9.e+]+)", l).group(1)
@@ -76,7 +77,9 @@ for l in run(["python3", "scripts/gainers.py"]).splitlines():
         entry = re.search(r"entry ([0-9.e\-]+-[0-9.e\-]+)", l).group(1)
         warn = " Funding is very negative, so shorts are crowded and squeeze risk is high." if fund < -0.1 else ""
         played = " Price is already past TP1, so the move has mostly played out. Don't chase it." if float(live) <= tp1 else ""
-        send(f"🔻 SHORT SIGNAL: {sym} (+{ch}% 24h)\n1h candle to {t} WAT tagged the 24h high {g('high')} and closed red at {g('c')}, below the prior hour's low. Funding {fund:+.3f}%.\n"
+        why = (f"Lower-high bounce failed: the 1h candle to {t} WAT topped under the 24h high {g('high')} and closed weak at {g('c')}. Riskier than a top rejection, since the trend can resume." if lh else
+               f"1h candle to {t} WAT tagged the 24h high {g('high')} and closed red at {g('c')}, below the prior hour's low.")
+        send(f"🔻 SHORT SIGNAL{' (fade)' if lh else ''}: {sym} (+{ch}% 24h)\n{why} Funding {fund:+.3f}%.\n"
              f"Entry {entry} · SL {g('stop')} · TP1 {g('tp1')} · TP2 {g('tp2')}\nLive {live}.{played}{warn}\nUse 3-5x max and small size; these coins wick 20%+. MEXC prices.")
     except Exception as e:
         print("gainer parse", e, l)
