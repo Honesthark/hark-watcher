@@ -178,10 +178,16 @@ for j in moves.values():
     pct_vol = j.get("pct_vol") or 0
     scan = "https://etherscan.io/tx/" if j["chain"] == "ethereum" else "https://bscscan.com/tx/"
     txl = "\n".join(scan + t for t in j["txs"][:3])
-    send(f"🚨 {j['sym']} {j['kind']} · {fmt(j['amount'])} {j['sym']} (~${j['usd']:,.0f}) · {pct_mcap:.2f}% of mcap, {pct_vol:.2f}% of 24h vol\n"
-         f"From {sh(j['from'], j.get('from_label'))} → {sh(j['to'], j.get('to_label'))}\n"
-         f"Mcap ${mc/1e6:.1f}M · 24h {j.get('chg24', 0):+.2f}% · MEXC OI ${oi/1e6:.2f}M ({oip:.0f}% of mcap) · funding {f:+.3f}%\n"
-         f"Read: {READ.get(j['kind'], '')} {pos}\n{FOOT}\n{txl}")
+    tier = "🔴 MAJOR" if pct_mcap >= 5 else "🟠 LARGE" if pct_mcap >= 2 else "🔵 NOTABLE"
+    icon = {"COLD TO HOT": "🔥", "HOT TO COLD": "🧊", "EXCHANGE DEPOSIT": "📥", "EXCHANGE WITHDRAWAL": "📤"}.get(j["kind"], "🐋")
+    chain = "Ethereum" if j["chain"] == "ethereum" else "BNB Chain"
+    send(f"{icon} {j['kind']}\n━━━━━━━━━━━━\n"
+         f"📌 {j['sym']} · {chain}\n💰 ${j['usd']:,.0f} ({j['amount']:,.0f} tokens)\n"
+         f"➡️ {sh(j['from'], j.get('from_label'))} → {sh(j['to'], j.get('to_label'))}\n\n"
+         f"{tier}\n{pct_mcap:.2f}% of market cap · {pct_vol:.2f}% of daily volume\n\n"
+         f"Market cap ${mc/1e6:.2f}M\nDaily volume (MEXC) ${(j.get('vol24_mexc_usd') or 0)/1e6:.2f}M\nPrice 24h {j.get('chg24', 0):+.2f}%\n\n"
+         f"Derivatives (MEXC)\nOI ${oi/1e6:.2f}M ({oip:.0f}% of mcap)\nFunding {f:+.4f}%\n\n"
+         f"Read\n> {READ.get(j['kind'], '')}\n> {pos}\n\n{FOOT}\n{txl}")
 
 json.dump(rl, open(RL, "w"))
 json.dump(trades, open(TR, "w"))
