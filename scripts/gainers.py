@@ -21,5 +21,20 @@ for s in dict.fromkeys(cand):
         st[s]=now; st[s+"_t"]=t
         stop=h*1.02; risk=stop-c
         print(f"ALERT {s} 1h {time.strftime('%H:%M',time.gmtime(t+3600))} WAT o{o} h{h} c{c} | 24h +{round(float(x['riseFallRate'])*100,1)}% high {hi} low {lo} | funding {f} | live {last} | entry {c:.6g}-{(c+h)/2:.6g} stop {stop:.6g} tp1 {max(c-risk*1.5,lo):.6g} tp2 {max(c-risk*2.5,lo):.6g}")
+    # Trigger 2: failed lower-high bounce (slow fade). High made >=2h ago, candle high 2-12% under it,
+    # red close in lower 40% of range, and upper wick >=30% or close below prior low. Not >25% off the high already.
+    try:
+        k2=get(f"https://contract.mexc.com/api/v1/contract/kline/{s}?interval=Min60&start={int(now)-26*3600}")["data"]
+        n=len(k2["close"])-1  # index of the open (live) candle; last closed is n-1
+        if n>=4:
+            hs=k2["high"][:n]; hi2=max(hs); hi_i=hs.index(hi2); j=n-1
+            o2,h2,l2,c2,t2=k2["open"][j],k2["high"][j],k2["low"][j],k2["close"][j],k2["time"][j]; pl2=k2["low"][j-1]
+            r2=max(h2-l2,1e-12); up2=(h2-max(o2,c2))/r2; pos=(c2-l2)/r2
+            if (j-hi_i>=2 and hi2*0.88<=h2<=hi2*0.98 and c2<o2 and pos<=0.4 and (up2>=0.3 or c2<pl2)
+                and c2>=hi2*0.75 and now-st.get(s+"_lh",0)>6*3600 and st.get(s+"_lht")!=t2):
+                st[s+"_lh"]=now; st[s+"_lht"]=t2
+                stop=h2*1.02; risk=stop-c2
+                print(f"ALERT2 {s} 1h {time.strftime('%H:%M',time.gmtime(t2+3600))} WAT o{o2} h{h2} c{c2} | 24h +{round(float(x['riseFallRate'])*100,1)}% high {hi2} low {lo} | funding {f} | live {last} | entry {c2:.6g}-{(c2+h2)/2:.6g} stop {stop:.6g} tp1 {max(c2-risk*1.5,lo):.6g} tp2 {max(c2-risk*2.5,lo):.6g}")
+    except Exception as e: print("lh err",s,e)
 json.dump(st,open(S,"w"))
 print("WATCH",", ".join(seen))
