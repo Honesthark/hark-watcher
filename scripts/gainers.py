@@ -2,7 +2,7 @@
 # Trigger: 1h candle wicks within 3% of the 24h high (or makes it), closes red, upper wick >=40% of range, close below prior 1h low.
 # One alert per symbol per 6h. Prints ALERT lines only for new triggers, plus a WATCH line.
 import json,urllib.request,time,os
-S="state/gainers.json"; EXTRA=["AIN_USDT"]
+S="state/gainers.json"; EXTRA=["AIN_USDT","JCT_USDT"]
 def get(u): return json.load(urllib.request.urlopen(urllib.request.Request(u,headers={"user-agent":"curl/8.5.0"}),timeout=20))
 st=json.load(open(S)) if os.path.exists(S) else {}
 now=time.time()
