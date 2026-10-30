@@ -52,10 +52,10 @@ def num(pat, text):
     return float(m.group(1)) if m else None
 
 
-def track(sym, label, text):
+def track(sym, label, text, side="SHORT"):
     e, sl, t1, t2 = num(r"entry", text), num(r"(?:SL|stop)(?: above)?", text), num(r"TP1", text), num(r"TP2", text)
     if None in (e, sl, t1, t2): print("track skip", sym); return
-    trades.append({"sym": sym, "label": label, "entry": e, "sl": sl, "tp1": t1, "tp2": t2,
+    trades.append({"sym": sym, "label": label, "side": side, "entry": e, "sl": sl, "tp1": t1, "tp2": t2,
                    "t": time.time(), "chk": time.time(), "tp1hit": False})
 
 
@@ -73,22 +73,21 @@ def check_trades():
         except Exception as ex:
             print("tracker", tr["sym"], ex); keep.append(tr); continue
         done = False; last = ks[-1][3] if ks else "?"
+        d = -1 if tr.get("side", "SHORT") == "SHORT" else 1
         stop = tr["entry"] if tr["tp1hit"] else tr["sl"]
+        pc = lambda v: abs(v - tr['entry']) / tr['entry'] * 100
         for _, h, l, c in ks:
-            if h >= stop:
+            if (d == -1 and h >= stop) or (d == 1 and l <= stop):
                 if tr["tp1hit"]:
                     send(f"➖ {tr['sym']} {tr['label']}: price came back to entry {tr['entry']} after TP1. Closed at breakeven on the rest, with TP1 profit kept. Live {last}")
                 else:
-                    pct = (tr['sl'] - tr['entry']) / tr['entry'] * 100
-                    send(f"❌ {tr['sym']} {tr['label']}: STOP HIT at {tr['sl']} (about -{pct:.1f}% from entry {tr['entry']}, before leverage). Trade closed. Live {last}")
+                    send(f"❌ {tr['sym']} {tr['label']}: STOP HIT at {tr['sl']} (about -{pc(tr['sl']):.1f}% from entry {tr['entry']}, before leverage). Trade closed. Live {last}")
                 done = True; break
-            if not tr["tp1hit"] and l <= tr["tp1"]:
+            if not tr["tp1hit"] and ((d == -1 and l <= tr["tp1"]) or (d == 1 and h >= tr["tp1"])):
                 tr["tp1hit"] = True; stop = tr["entry"]
-                pct = (tr['entry'] - tr['tp1']) / tr['entry'] * 100
-                send(f"✅ {tr['sym']} {tr['label']}: TP1 HIT at {tr['tp1']} (+{pct:.1f}% from entry {tr['entry']}, before leverage). Consider taking partial profit and moving the stop to entry. Still tracking TP2 {tr['tp2']}. Live {last}")
-            if tr["tp1hit"] and l <= tr["tp2"]:
-                pct = (tr['entry'] - tr['tp2']) / tr['entry'] * 100
-                send(f"🎯 {tr['sym']} {tr['label']}: TP2 HIT at {tr['tp2']} (+{pct:.1f}% from entry {tr['entry']}, before leverage). Trade complete. Live {last}")
+                send(f"✅ {tr['sym']} {tr['label']}: TP1 HIT at {tr['tp1']} (+{pc(tr['tp1']):.1f}% from entry {tr['entry']}, before leverage). Consider taking partial profit and moving the stop to entry. Still tracking TP2 {tr['tp2']}. Live {last}")
+            if tr["tp1hit"] and ((d == -1 and l <= tr["tp2"]) or (d == 1 and h >= tr["tp2"])):
+                send(f"🎯 {tr['sym']} {tr['label']}: TP2 HIT at {tr['tp2']} (+{pc(tr['tp2']):.1f}% from entry {tr['entry']}, before leverage). Trade complete. Live {last}")
                 done = True; break
         if ks: tr["chk"] = ks[-1][0]
         if not done and time.time() - tr["t"] > 48 * 3600:
@@ -126,6 +125,22 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
             if allow(sym + "MOM", 6): send(f"🟢 {sym} MOMENTUM, stay out\n{body}\nLive {live}")
         elif ev == "INVALID":
             send(f"↩️ {sym} setup B reset\n{body}\nLive {live}")
+
+# ---- BTC & ETH trend-breakout signals (long and short) ----
+for l in run(["python3", "scripts/majors.py"]).splitlines():
+    m = re.match(r"SIGNAL (\w+) (LONG|SHORT) close (\S+) level (\S+) at (\S+) (.*) risk (\S+)", l)
+    if not m: continue
+    sym, side, cl, lvl, hhmm, plan, risk = m.groups()
+    if any(t["sym"] == sym for t in trades): print("skip, open trade", sym); continue
+    up = side == "LONG"
+    why = (f"1h candle to {hhmm} WAT closed at {cl}, above the 24h high {lvl}, with the 1h trend up (EMA50 over EMA200)." if up else
+           f"1h candle to {hhmm} WAT closed at {cl}, below the 24h low {lvl}, with the 1h trend down (EMA50 under EMA200).")
+    p = dict(re.findall(r"(entry|SL|TP1|TP2) (\S+)", plan))
+    send(f"{'🟢' if up else '🔻'} {sym} {side} SIGNAL · 24h {'breakout' if up else 'breakdown'}\n{why}\n"
+         f"Entry ~{p['entry']} · SL {p['SL']} · TP1 {p['TP1']} · TP2 {p['TP2']}\n"
+         f"Stop is {risk}% away, so at 10x a stop costs about {float(risk)*10:.0f}% of margin. Keep size small.\n"
+         f"Backtest since Jun 2025: about 54% of these hit TP1 first; a thin edge, not a sure thing. MEXC prices. I'll ping you when TP or SL is hit.")
+    track(sym, f"{side.lower()} breakout", plan, side)
 
 # ---- gainers short watcher ----
 for l in run(["python3", "scripts/gainers.py"]).splitlines():
