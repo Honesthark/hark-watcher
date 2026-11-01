@@ -24,9 +24,13 @@ def send(text):
             print("send failed", e); time.sleep(3)
 
 
-def run(cmd):
-    for _ in range(2):
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
+def run(cmd, timeout=150, tries=2):
+    for _ in range(tries):
+        try:
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired as e:
+            print(cmd, "timed out"); out = e.stdout or ""
+            return out.decode() if isinstance(out, bytes) else out
         if p.returncode == 0: return p.stdout
         print(cmd, "failed:", p.stderr[-400:]); time.sleep(5)
     return ""
@@ -149,7 +153,7 @@ for l in run(["python3", "scripts/gainers.py"]).splitlines():
     lh = l.startswith("ALERT2")
     try:
         sym = l.split()[1].replace("_USDT", "")
-        g = lambda k: re.search(k + r" ([\-0-9.e+]+)", l).group(1)
+        g = lambda k: re.search(r"(?:^|[ |])" + k + r" ?([\-0-9.e+]+)", l).group(1)
         t = re.search(r"1h (\d\d:\d\d) WAT", l).group(1)
         ch = re.search(r"24h \+([0-9.]+)%", l).group(1)
         fund = float(g("funding")) * 100; live = g("live"); tp1 = float(g("tp1"))
@@ -166,7 +170,7 @@ for l in run(["python3", "scripts/gainers.py"]).splitlines():
 
 # ---- on-chain whale alerts ----
 moves = {}
-for l in run(["node", "scripts/onchain.mjs"]).splitlines():
+for l in run(["node", "scripts/onchain.mjs"], 120, 1).splitlines():
     try: j = json.loads(l)
     except Exception: continue
     if "kind" not in j or j["kind"] in ("MINT", "BURN"): continue
