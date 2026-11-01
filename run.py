@@ -9,7 +9,8 @@ RL = "state/ratelimit.json"
 rl = json.load(open(RL)) if os.path.exists(RL) else {}
 FOOT = "Not a trade signal on its own. Keep size small, 3-5x max. MEXC data; Bybit may differ."
 NOTE = {"AIN": "AIN wicks 15-20% in an hour.", "Q": "Q is a low-cap pump coin with huge wicks.",
-        "BTW": "BTW has a thin book and huge wicks.", "IRYS": "IRYS has very thin books and huge wicks."}
+        "BTW": "BTW has a thin book and huge wicks.", "IRYS": "IRYS has very thin books and huge wicks.",
+        "EVAA": "EVAA just wicked +23% in one hour, so stops can get run."}
 
 
 def send(text):
@@ -100,7 +101,7 @@ check_trades()
 
 
 # ---- setup watchers ----
-for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "irys")]:
+for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "irys"), ("EVAA", "evaa")]:
     out = run(["python3", f"scripts/{script}.py"])
     live = next((l.split()[1] for l in out.splitlines() if l.startswith("live ")), "?")
     for l in out.splitlines():
