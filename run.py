@@ -60,6 +60,7 @@ def num(pat, text):
 def track(sym, label, text, side="SHORT"):
     e, sl, t1, t2 = num(r"entry", text), num(r"(?:SL|stop)(?: above)?", text), num(r"TP1", text), num(r"TP2", text)
     if None in (e, sl, t1, t2): print("track skip", sym); return
+    if any(t["sym"] == sym and t["label"] == label and t["entry"] == e for t in trades): print("already tracking", sym); return
     trades.append({"sym": sym, "label": label, "side": side, "entry": e, "sl": sl, "tp1": t1, "tp2": t2,
                    "t": time.time(), "chk": time.time(), "tp1hit": False})
 
@@ -119,6 +120,7 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
             if sym in ("Q", "AIN") and ev in ("ALERT REJECTION", "ALERT SETUP A") and not allow(sym + ev, 3 if sym == "AIN" else 2): continue
             cand, plan = (body.split(" Short plan: ") + [""])[:2]
             e0 = num(r"entry", plan); late = ""
+            if any(t["sym"] == sym and t["label"] == name and t["entry"] == e0 for t in trades): print("dup signal", sym); continue
             try:
                 if e0 and float(live) < e0 * 0.98: late = " Price is already below entry, so wait for a bounce toward entry rather than chasing."
             except Exception: pass
