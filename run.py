@@ -137,11 +137,13 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
     for l in out.splitlines():
         if l.startswith("live"): continue
         if l.startswith("WHALE "):
-            _, kind, w, amt, left, usd, tot = l.split()
+            parts = l.split(); _, kind, w, amt, left, usd, tot = parts[:7]
+            chg, fr = (parts[7:9] + ["na", "na"])[:2]
             sell = kind == "SELL"
             send(card(f"🐋 {sym} · WHALE {kind} {'🔴' if sell else '🟢'}", f"{w[:6]}…{w[-4:]}",
                       [("💰 Moved", f"{fmt(amt)} {sym} (~${float(usd):,.0f})"), ("👛 Left", fmt(left)),
-                       ("📦 13 wallets", f"{float(tot)/1e9:.2f}B ({float(tot)/1e9:.1f}% supply)"), ("💲 Now", live)],
+                       ("📦 13 wallets", f"{float(tot)/1e9:.2f}B ({float(tot)/1e9:.1f}% supply)"), ("💲 Now", live),
+                       ("📈 24h", f"{chg}%"), ("💸 Funding", f"{fr}%" + (" 🔥 crowded shorts" if fr != "na" and float(fr) < -0.1 else ""))],
                       risk="More supply can hit the market. Watch the short setups." if sell else "",
                       tail=f"🔗 https://bscscan.com/address/{w}"))
             continue
