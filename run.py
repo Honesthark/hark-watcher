@@ -2,7 +2,8 @@
 import json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 
 TOKEN = os.environ.get("TG_TOKEN", "")
-CHAT = os.environ.get("TG_CHAT", "")
+CHAT = "6335292530"  # @Bbyboss22 private chat with @Harkwatch_bot
+_ENVCHAT = os.environ.get("TG_CHAT", "")
 DRY = "--dry" in sys.argv
 if not DRY and not (TOKEN and CHAT): sys.exit("TG_TOKEN / TG_CHAT secret missing")
 RL = "state/ratelimit.json"
@@ -20,7 +21,8 @@ def send(text):
     data = urllib.parse.urlencode({"chat_id": CHAT, "text": text, "disable_web_page_preview": "true"}).encode()
     for _ in range(2):
         try:
-            urllib.request.urlopen(f"https://api.telegram.org/bot{TOKEN}/sendMessage", data, timeout=20); return
+            r = json.load(urllib.request.urlopen(f"https://api.telegram.org/bot{TOKEN}/sendMessage", data, timeout=20))
+            print("sent ok", r.get("ok"), "bot", r["result"]["from"].get("username"), "chat", str(r["result"]["chat"]["id"])[-3:], "envchat", _ENVCHAT[-3:]); return
         except Exception as e:
             print("send failed", e); time.sleep(3)
 
