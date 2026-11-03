@@ -12,20 +12,22 @@ first=not os.path.exists(ST)
 s=json.load(open(ST)) if not first else {"last":closed[-1][0],"broken":False,"bal":{}}
 W=dt.timezone(dt.timedelta(hours=1))
 f=lambda k:dt.datetime.fromtimestamp(k[0],W).strftime("%a %H:%M")+"-"+dt.datetime.fromtimestamp(k[0]+3600,W).strftime("%H:%M WAT")
+# Fresh setups of 2026-11-03 16:05 WAT at 0.00414 (24h -25%, lows 0.003997). Old 0.0052-0.0066 plan retired.
+s.setdefault("b2",False)
 for k in closed:
     if k[0]<=s["last"]: continue
     h,c=k[2],k[4]
-    if 0.0059<=h<=0.0066 and c<0.0058:
-        print(f"ALERT REJECTION: 1h candle {f(k)} wicked to {h} and closed at {c}, bounce rejected at 0.0059-0.0065. Short plan: entry ~0.0057, SL above 0.0066, TP1 0.0050, TP2 0.0045.")
-    if not s["broken"]:
-        if c<0.00524:
-            s["broken"]=True; print(f"ALERT BREAK: 1h candle {f(k)} closed at {c}, below 0.00524 (Nov 2 low). Heads-up only; watching for a failed retest of 0.0052.")
+    if 0.0044<=h<=0.00475 and c<0.0043:
+        print(f"ALERT REJECTION: 1h candle {f(k)} bounced to {h} (old 0.0044-0.0046 support, now resistance) and closed back at {c}. Short plan: entry ~0.00435, SL above 0.00475, TP1 0.00405, TP2 0.0038.")
+    if not s["b2"]:
+        if c<0.00395:
+            s["b2"]=True; print(f"ALERT BREAK: 1h candle {f(k)} closed at {c}, below 0.00395 (under today's 0.003997 low). Heads-up only; watching for a failed retest of 0.00395-0.0040.")
     else:
-        if c>0.0058:
-            s["broken"]=False; print(f"INVALID: 1h candle {f(k)} closed back above 0.0058 at {c}. Breakdown reclaimed, setup B reset.")
-        elif h>=0.0052 and c<0.00524 and c>=0.0048:
-            print(f"ALERT RETEST FAILED: 1h candle {f(k)} wicked to {h} and closed at {c}, below 0.00524. Short plan: entry ~0.0052, SL above 0.0058, TP1 0.0048, TP2 0.0044.")
-    if c>0.0066: print(f"MOMENTUM: 1h candle {f(k)} closed at {c}, above 0.0066. Short ideas invalid, stay out.")
+        if c>0.0043:
+            s["b2"]=False; print(f"INVALID: 1h candle {f(k)} closed back above 0.0043 at {c}. Breakdown reclaimed, setup B reset.")
+        elif h>=0.00393 and c<0.00395 and c>=0.0036:
+            print(f"ALERT RETEST FAILED: 1h candle {f(k)} wicked to {h} and closed at {c}, below 0.00395. Short plan: entry ~0.00393, SL above 0.00428, TP1 0.0036, TP2 0.0033.")
+    if c>0.00475: print(f"MOMENTUM: 1h candle {f(k)} closed at {c}, above 0.00475. Short ideas invalid, stay out.")
     s["last"]=k[0]
 
 # ---- whale wallets: alert when a balance drops (or jumps) by 5M+ AKE since the last run ----
