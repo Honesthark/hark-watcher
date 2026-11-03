@@ -200,21 +200,25 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
     for m_ in whale: send(m_)
 
 # ---- BTC & ETH trend-breakout signals (long and short) ----
-for l in run(["python3", "scripts/majors.py"]).splitlines():
-    m = re.match(r"SIGNAL (\w+) (LONG|SHORT) close (\S+) level (\S+) at (\S+) (.*) risk (\S+)", l)
-    if not m: continue
-    sym, side, cl, lvl, hhmm, plan, risk = m.groups()
-    if any(t["sym"] == sym for t in trades): print("skip, open trade", sym); continue
-    up = side == "LONG"
-    rk = re.search(r"kind rsi (\d+)", l)
-    why = (f"1h close {cl} broke above the 24h high {lvl}, trend up" if up else f"1h close {cl} broke below the 24h low {lvl}, trend down")
-    if rk: why = (f"RSI {rk.group(1)}: oversold dip inside an uptrend, snap-back long" if up else f"RSI {rk.group(1)}: overbought pop inside a downtrend, snap-back short")
-    p = dict(re.findall(r"(entry|SL|TP1|TP2) (\S+)", plan))
-    send(card(f"{'🟢 LONG' if up else '🔴 SHORT'} · {sym}", (f"📌 RSI snap-back · {hhmm} WAT" if rk else f"📌 24h {'breakout' if up else 'breakdown'} · {hhmm} WAT"),
-              [("🚪 Entry", p['entry']), ("🛑 Stop", f"{p['SL']} ({risk}%)"), ("🎯 TP1", p['TP1']), ("🎯 TP2", p['TP2'])],
-              why, f"At 10x a stop costs ~{float(risk)*10:.0f}% of margin. " + ("Backtest 72% hit TP1 first. Close most at TP1; the stop is 2x wider than TP1." if rk else "NVDA backtest ~50% hit TP1 first, about breakeven: use your levels." if sym == "NVIDIA" else "Backtest ~54% hit TP1 first."),
-              "🔔 I'll ping you at TP or stop."))
-    track(sym, f"{side.lower()} {'rsi snap-back' if rk else 'breakout'}", plan, side)
+def handle_signals(out):
+  for l in out.splitlines():
+      m = re.match(r"SIGNAL (\w+) (LONG|SHORT) close (\S+) level (\S+) at (\S+) (.*) risk (\S+)", l)
+      if not m: continue
+      sym, side, cl, lvl, hhmm, plan, risk = m.groups()
+      if any(t["sym"] == sym for t in trades): print("skip, open trade", sym); continue
+      up = side == "LONG"
+      rk = re.search(r"kind rsi(\d*) (\d+)", l); m15 = bool(rk and rk.group(1))
+      why = (f"1h close {cl} broke above the 24h high {lvl}, trend up" if up else f"1h close {cl} broke below the 24h low {lvl}, trend down")
+      if rk: why = (f"{'15m ' if m15 else '1h '}RSI {rk.group(2)}: oversold dip inside an uptrend, snap-back long" if up else f"{'15m ' if m15 else '1h '}RSI {rk.group(2)}: overbought pop inside a downtrend, snap-back short")
+      p = dict(re.findall(r"(entry|SL|TP1|TP2) (\S+)", plan))
+      send(card(f"{'🟢 LONG' if up else '🔴 SHORT'} · {sym}", (f"📌 {'15m' if m15 else '1h'} RSI snap-back · {hhmm} WAT" if rk else f"📌 24h {'breakout' if up else 'breakdown'} · {hhmm} WAT"),
+                [("🚪 Entry", p['entry']), ("🛑 Stop", f"{p['SL']} ({risk}%)"), ("🎯 TP1", p['TP1']), ("🎯 TP2", p['TP2'])],
+                why, f"At 10x a stop costs ~{float(risk)*10:.0f}% of margin. " + ("Backtest 71% hit TP1 first (~14/month). Close most at TP1; stop is 1.5x TP1." if m15 else "Backtest 72% hit TP1 first. Close most at TP1; the stop is 2x wider than TP1." if rk else "NVDA backtest ~50% hit TP1 first, about breakeven: use your levels." if sym == "NVIDIA" else "Backtest ~54% hit TP1 first."),
+                "🔔 I'll ping you at TP or stop."))
+      track(sym, f"{side.lower()} {'rsi snap-back' if rk else 'breakout'}", plan, side)
+
+handle_signals(run(["python3", "scripts/majors.py"]))
+handle_signals(run(["python3", "scripts/nvda15.py"]))
 
 # ---- gainers short watcher ----
 for l in run(["python3", "scripts/gainers.py"]).splitlines():
@@ -284,9 +288,10 @@ json.dump(trades, open(TR, "w"))
 
 # ---- fast tracker loop: GitHub cron fires about hourly, so keep checking stops/TPs every minute ----
 if not DRY:
-    end = time.time() + 35 * 60
-    while trades and time.time() < end:
+    end = time.time() + 50 * 60
+    while time.time() < end:
         time.sleep(60)
+        handle_signals(run(["python3", "scripts/nvda15.py"], 60, 1))
         check_trades()
         json.dump(trades, open(TR, "w"))
 print("done")
