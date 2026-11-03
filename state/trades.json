@@ -1,1 +1,1 @@
-[{"sym": "HOT", "label": "top short", "side": "SHORT", "entry": 0.0005277, "sl": 0.000609144, "tp1": 0.000405534, "tp2": 0.0003862, "t": 1793715178.5465233, "chk": 1793726700, "tp1hit": false}]
+[{"sym": "HOT", "label": "top short", "side": "SHORT", "entry": 0.0005277, "sl": 0.000609144, "tp1": 0.000405534, "tp2": 0.0003862, "t": 1793715178.5465233, "chk": 1793730300, "tp1hit": false}, {"sym": "Q", "label": "Dip long, support held", "side": "LONG", "entry": 0.0303, "sl": 0.0288, "tp1": 0.033, "tp2": 0.035, "t": 1793727243.201527, "chk": 1793730300, "tp1hit": false}]
