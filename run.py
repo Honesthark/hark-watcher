@@ -12,7 +12,7 @@ FOOT = "Not a trade signal on its own. Keep size small, 3-5x max. MEXC data; Byb
 NOTE = {"AIN": "AIN wicks 15-20% in an hour.", "Q": "Q is a low-cap pump coin with huge wicks.",
         "BTW": "BTW has a thin book and huge wicks.", "IRYS": "IRYS has very thin books and huge wicks.",
         "EVAA": "EVAA just wicked +23% in one hour, so stops can get run.",
-        "AKE": "AKE fell 82% in a week and funding is very negative, so short squeezes are likely."}
+        "AKE": "AKE has squeezed +27% in one hour twice today (02:00 and 04:00 WAT), so stops get run."}
 
 
 def send(text):
