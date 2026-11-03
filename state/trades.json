@@ -1,1 +1,1 @@
-[{"sym": "BTC", "label": "short breakout", "side": "SHORT", "entry": 77479.3, "sl": 78319.0, "tp1": 76639.6, "tp2": 75799.9, "t": 1793637765.9197023, "chk": 1793701800, "tp1hit": true}, {"sym": "BTW", "label": "Setup A, bounce rejected", "side": "SHORT", "entry": 0.925, "sl": 0.96, "tp1": 0.876, "tp2": 0.83, "t": 1793700655.9653478, "chk": 1793701800, "tp1hit": false}]
+[{"sym": "BTC", "label": "short breakout", "side": "SHORT", "entry": 77479.3, "sl": 78319.0, "tp1": 76639.6, "tp2": 75799.9, "t": 1793637765.9197023, "chk": 1793705400, "tp1hit": true}]
