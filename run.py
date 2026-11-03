@@ -210,7 +210,7 @@ for l in run(["python3", "scripts/majors.py"]).splitlines():
     p = dict(re.findall(r"(entry|SL|TP1|TP2) (\S+)", plan))
     send(card(f"{'🟢 LONG' if up else '🔴 SHORT'} · {sym}", f"📌 24h {'breakout' if up else 'breakdown'} · {hhmm} WAT",
               [("🚪 Entry", p['entry']), ("🛑 Stop", f"{p['SL']} ({risk}%)"), ("🎯 TP1", p['TP1']), ("🎯 TP2", p['TP2'])],
-              why, f"At 10x a stop costs ~{float(risk)*10:.0f}% of margin. Backtest ~54% hit TP1 first.",
+              why, f"At 10x a stop costs ~{float(risk)*10:.0f}% of margin. " + ("NVDA backtest ~50% hit TP1 first, about breakeven: use your levels." if sym == "NVIDIA" else "Backtest ~54% hit TP1 first."),
               "🔔 I'll ping you at TP or stop."))
     track(sym, f"{side.lower()} breakout", plan, side)
 
