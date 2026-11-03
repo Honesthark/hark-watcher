@@ -122,6 +122,11 @@ def check_trades():
     trades[:] = keep
 
 
+OB = "state/outbox.json"
+if os.path.exists(OB):
+    for m in json.load(open(OB)): send(m)
+    os.remove(OB)
+
 check_trades()
 
 
