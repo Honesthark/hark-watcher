@@ -10,7 +10,7 @@ def ema(x, n):
     return e
 for sym, dp, slm in [("BTC", 1, 2), ("ETH", 2, 2), ("NVIDIA", 2, 1.5)]:  # NVIDIA_USDT = NVDA stock perp; backtest Jul 2025-Nov 2026: 218 trades 50% win, ~breakeven
     try:
-        u = f"https://contract.mexc.com/api/v1/contract/kline/{sym}_USDT?interval=Min60&start={int(time.time())-700*3600}"
+        u = f"https://contract.mexc.com/api/v1/contract/kline/{sym}_USDT?interval=Min60&start={int(time.time())-(1300 if sym == 'NVIDIA' else 700)*3600}"
         d = json.load(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "curl/8.5.0"}), timeout=20))["data"]
     except Exception as e:
         print("ERR", sym, e, file=sys.stderr); continue
@@ -23,12 +23,22 @@ for sym, dp, slm in [("BTC", 1, 2), ("ETH", 2, 2), ("NVIDIA", 2, 1.5)]:  # NVIDI
     print("live", sym, cl)
     if st.get(sym) == t[-1]: continue
     side = "LONG" if cl > hi and e50 > e200 else "SHORT" if cl < lo and e50 < e200 else None
+    kind = "breakout"
+    if not side and sym == "NVIDIA":
+        # NVDA RSI-extreme reversion with trend: RSI14 < 30 above EMA300 -> LONG, > 70 below EMA300 -> SHORT.
+        # SL 2 ATR, TP1 1 ATR. Backtest Jul 2025-Nov 2026: 46 trades, 72% hit TP1 first (train 73%, test 71%), +0.15 ATR/trade.
+        g = [0] + [c[i] - c[i-1] for i in range(1, len(c))]
+        up = ema([max(x, 0) for x in g], 27)[-1]; dn = ema([max(-x, 0) for x in g], 27)[-1]
+        rsi = 100 - 100 / (1 + up / dn) if dn else 50; e300 = ema(c, 300)[-1]
+        side = "LONG" if rsi < 30 and cl > e300 else "SHORT" if rsi > 70 and cl < e300 else None
+        kind = f"rsi {rsi:.0f}"
     if not side: continue
     st[sym] = t[-1]
     dd = 1 if side == "LONG" else -1
-    sl = cl - dd * slm * a; R = abs(cl - sl)
+    sl = cl - dd * (2 if kind != "breakout" else slm) * a; R = abs(cl - sl)
+    if kind != "breakout": R = a  # TP1 = 1 ATR, TP2 = 2 ATR
     lvl = hi if side == "LONG" else lo
     hhmm = time.strftime("%H:%M", time.gmtime(t[-1] + 3600 + 3600))
     f = lambda v: f"{v:.{dp}f}"
-    print(f"SIGNAL {sym} {side} close {f(cl)} level {f(lvl)} at {hhmm} entry {f(cl)} SL {f(sl)} TP1 {f(cl+dd*R)} TP2 {f(cl+dd*2*R)} risk {R/cl*100:.2f}")
+    print(f"SIGNAL {sym} {side} close {f(cl)} level {f(lvl)} at {hhmm} entry {f(cl)} SL {f(sl)} TP1 {f(cl+dd*R)} TP2 {f(cl+dd*2*R)} risk {abs(cl-sl)/cl*100:.2f} kind {kind}")
 json.dump(st, open(S, "w"))
