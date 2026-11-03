@@ -45,6 +45,10 @@ def bal(w):
         except Exception: continue
     return None
 live=float(ks[-1][4])
+try:
+    tk=json.load(urllib.request.urlopen(urllib.request.Request("https://contract.mexc.com/api/v1/contract/ticker?symbol=AKE_USDT",headers=UA),timeout=15))["data"]
+    ind=f"{float(tk['riseFallRate'])*100:+.1f} {float(tk['fundingRate'])*100:+.4f}"
+except Exception: ind="na na"
 for w in WALLETS:
     b=bal(w)
     if b is None: continue
@@ -53,6 +57,6 @@ for w in WALLETS:
     dlt=b-old
     if abs(dlt)>=5e6:
         rest=sum(s["bal"].values())
-        print(f"WHALE {'SELL' if dlt<0 else 'BUY'} {w} {abs(dlt):.0f} {b:.0f} {abs(dlt)*live:.0f} {rest:.0f}")
+        print(f"WHALE {'SELL' if dlt<0 else 'BUY'} {w} {abs(dlt):.0f} {b:.0f} {abs(dlt)*live:.0f} {rest:.0f} {ind}")
 json.dump(s,open(ST,"w"))
 print("live",ks[-1][4])
