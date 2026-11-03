@@ -1,4 +1,4 @@
-# BTW 1h short watcher (MEXC BTWUSDT), plan of 2026-10-26 17:00 WAT. Prints events, then a live line.
+# BTW 1h short watcher (MEXC BTWUSDT), plan of 2026-11-03 11:10 WAT. Prints events, then a live line.
 import json,urllib.request,datetime as dt,os
 ST="state/btw.json"
 u="https://api.mexc.com/api/v3/klines?symbol=BTWUSDT&interval=60m&limit=16"
@@ -12,18 +12,19 @@ f=lambda k:dt.datetime.fromtimestamp(k[0]/1000,W).strftime("%a %H:%M")+"-"+dt.da
 for k in closed:
     if k[0]<=s["last"]: continue
     h,c=float(k[2]),float(k[4])
-    # Setup A: bounce into old support 1.35-1.45 (now resistance) rejected
-    if 1.35<=h<=1.50 and c<1.30:
-        print(f"ALERT REJECTION: 1h candle {f(k)} wicked to {h} and closed at {c}, rejected at 1.35-1.45. Short plan: entry ~1.30-1.35, SL above 1.50, TP1 1.15, TP2 1.05.")
-    # Setup B: close below 1.05 (under the 1.07 flush low), then failed retest
-    if not s["broken"]:
-        if c<1.05:
-            s["broken"]=True; print(f"ALERT BREAK: 1h candle {f(k)} closed at {c} (below 1.05). Heads-up only; now watch for a failed retest of 1.05-1.10.")
+    # Plan of 2026-11-03 11:10 WAT (price 0.8947, 24h low). Old 1.35-1.50 / 1.05 levels retired.
+    # Setup A: bounce into 0.93-0.96 rejected, 1h close back below 0.925
+    if 0.93<=h<0.96 and c<0.925:
+        print(f"ALERT REJECTION: 1h candle {f(k)} wicked to {h} and closed at {c}, bounce rejected at 0.93-0.95. Short plan: entry ~0.925, SL above 0.96, TP1 0.876, TP2 0.83.")
+    # Setup B: close below 0.876 (Oct 26 low), then failed retest
+    if not s.get("b2"):
+        if c<0.876:
+            s["b2"]=True; print(f"ALERT BREAK: 1h candle {f(k)} closed at {c}, below 0.876 (Oct 26 low). Heads-up only; now watch for a failed retest of 0.872-0.876.")
     else:
-        if c>1.10:
-            s["broken"]=False; print(f"INVALID: 1h candle {f(k)} closed back above 1.10 at {c}. Breakdown reclaimed, setup B reset.")
-        elif h>=1.05 and c<1.05:
-            print(f"ALERT RETEST FAILED: 1h candle {f(k)} wicked to {h} and closed at {c}, below 1.05. Short plan: entry ~1.04, SL above 1.15, TP1 0.95, TP2 0.85.")
+        if c>0.905:
+            s["b2"]=False; print(f"INVALID: 1h candle {f(k)} closed back above 0.905 at {c}. Breakdown reclaimed, setup B reset.")
+        elif h>=0.872 and c<0.876:
+            print(f"ALERT RETEST FAILED: 1h candle {f(k)} wicked to {h} and closed at {c}, below 0.876. Short plan: entry ~0.872, SL above 0.905, TP1 0.83, TP2 0.78.")
     # Setup C (added 2026-11-01, unlock week): short squeeze then fade.
     # Squeeze = a high >=12% above the lowest low of the 10 candles before it, within the last 4 closed candles.
     # Backtest (last 500 1h candles, one trade at a time, TP1 1R): 13W-7L, +6R.
@@ -36,7 +37,7 @@ for k in closed:
         if base and sqh>=min(base)*1.12 and c<o and c<pl and c<=sqh*0.97 and s.get("c_sq")!=sq[0]:
             s["c_sq"]=sq[0]; stop=sqh*1.02; risk=stop-c
             print(f"ALERT SQUEEZE FADE: BTW squeezed to {sqh} (+{(sqh/min(base)-1)*100:.0f}% off {min(base)}), then 1h candle {f(k)} closed red at {c} below the prior low. Short plan: entry ~{c:.4f}, SL {stop:.4f} (above the squeeze high), TP1 {c-risk:.4f}, TP2 {max(c-risk*2,min(base)):.4f}. Size small, unlock-week swings are violent.")
-    if c>1.50: print(f"MOMENTUM: 1h candle {f(k)} closed at {c}, above 1.50. Short ideas invalid, stay out.")
+    if c>0.986: print(f"MOMENTUM: 1h candle {f(k)} closed at {c}, above 0.986. Short ideas invalid, stay out.")
     s["last"]=k[0]
 json.dump(s,open(ST,"w"))
 print("live",r[-1][4])
