@@ -122,18 +122,21 @@ def check_trades():
         d = -1 if tr.get("side", "SHORT") == "SHORT" else 1
         stop = tr["entry"] if tr["tp1hit"] else tr["sl"]
         pc = lambda v: abs(v - tr['entry']) / tr['entry'] * 100
-        for _, h, l, c in ks:
+        def dur(ts):
+            m = max(1, int((min(time.time(), ts + 300) - tr["t"]) // 60))
+            return f"{m} mins" if m < 60 else f"{m // 60}h {m % 60}m"
+        for ts, h, l, c in ks:
             if (d == -1 and h >= stop) or (d == 1 and l <= stop):
                 if tr["tp1hit"]:
-                    send(f"➖ {tr['sym']} · BREAKEVEN\n{tr['label']}\nBack to entry {tr['entry']} after TP1\n✅ TP1 profit kept · trade closed\n💲 Now {last}")
+                    send(f"➖ {tr['sym']} · BREAKEVEN\n{tr['label']}\nBack to entry {tr['entry']} after TP1\n✅ TP1 profit kept · trade closed\n💲 Now {last}\n⏱ Trade time: {dur(ts)}")
                 else:
-                    send(f"❌ {tr['sym']} · STOP HIT\n{tr['label']}\n🔴 Stop {tr['sl']} (−{pc(tr['sl']):.1f}% before leverage)\nEntry was {tr['entry']} · trade closed\n💲 Now {last}")
+                    send(f"❌ {tr['sym']} · STOP HIT\n{tr['label']}\n🔴 Stop {tr['sl']} (−{pc(tr['sl']):.1f}% before leverage)\nEntry was {tr['entry']} · trade closed\n💲 Now {last}\n⏱ Trade time: {dur(ts)}")
                 done = True; break
             if not tr["tp1hit"] and ((d == -1 and l <= tr["tp1"]) or (d == 1 and h >= tr["tp1"])):
                 tr["tp1hit"] = True; stop = tr["entry"]
-                send(f"✅ {tr['sym']} · TP1 HIT\n{tr['label']}\n🟢 TP1 {tr['tp1']} (+{pc(tr['tp1']):.1f}% before leverage)\n👉 Take partial profit, move stop to entry {tr['entry']}\n🎯 Next: TP2 {tr['tp2']}\n💲 Now {last}")
+                send(f"✅ {tr['sym']} · TP1 HIT\n{tr['label']}\n🟢 TP1 {tr['tp1']} (+{pc(tr['tp1']):.1f}% before leverage)\n👉 Take partial profit, move stop to entry {tr['entry']}\n🎯 Next: TP2 {tr['tp2']}\n💲 Now {last}\n⏱ Trade time: {dur(ts)}")
             if tr["tp1hit"] and ((d == -1 and l <= tr["tp2"]) or (d == 1 and h >= tr["tp2"])):
-                send(f"🎯 {tr['sym']} · TP2 HIT\n{tr['label']}\n🟢 TP2 {tr['tp2']} (+{pc(tr['tp2']):.1f}% before leverage)\n🏁 Trade complete\n💲 Now {last}")
+                send(f"🎯 {tr['sym']} · TP2 HIT\n{tr['label']}\n🟢 TP2 {tr['tp2']} (+{pc(tr['tp2']):.1f}% before leverage)\n🏁 Trade complete\n💲 Now {last}\n⏱ Trade time: {dur(ts)}")
                 done = True; break
         if ks: tr["chk"] = ks[-1][0]
         if not done and time.time() - tr["t"] > 48 * 3600:
