@@ -106,7 +106,7 @@ def track(sym, label, text, side="SHORT"):
 
 
 def kl(sym, since):
-    u = f"https://contract.mexc.com/api/v1/contract/kline/{sym}_USDT?interval=Min15&start={int(since)}"
+    u = f"https://contract.mexc.com/api/v1/contract/kline/{sym}_USDT?interval=Min5&start={int(since)}"
     d = json.load(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "curl/8.5.0"}), timeout=20))["data"]
     return list(zip(d["time"], d["high"], d["low"], d["close"]))
 
@@ -115,7 +115,7 @@ def check_trades():
     keep = []
     for tr in trades:
         try:
-            ks = [k for k in kl(tr["sym"], tr["chk"] - 900) if k[0] + 900 > tr["chk"]]
+            ks = [k for k in kl(tr["sym"], tr["chk"] - 300) if k[0] + 300 > tr["chk"]]
         except Exception as ex:
             print("tracker", tr["sym"], ex); keep.append(tr); continue
         done = False; last = ks[-1][3] if ks else "?"
@@ -279,4 +279,12 @@ for j in moves.values():
 
 json.dump(rl, open(RL, "w"))
 json.dump(trades, open(TR, "w"))
+
+# ---- fast tracker loop: GitHub cron fires about hourly, so keep checking stops/TPs every minute ----
+if not DRY:
+    end = time.time() + 35 * 60
+    while trades and time.time() < end:
+        time.sleep(60)
+        check_trades()
+        json.dump(trades, open(TR, "w"))
 print("done")
