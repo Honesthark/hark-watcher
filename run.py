@@ -206,13 +206,15 @@ for l in run(["python3", "scripts/majors.py"]).splitlines():
     sym, side, cl, lvl, hhmm, plan, risk = m.groups()
     if any(t["sym"] == sym for t in trades): print("skip, open trade", sym); continue
     up = side == "LONG"
+    rk = re.search(r"kind rsi (\d+)", l)
     why = (f"1h close {cl} broke above the 24h high {lvl}, trend up" if up else f"1h close {cl} broke below the 24h low {lvl}, trend down")
+    if rk: why = (f"RSI {rk.group(1)}: oversold dip inside an uptrend, snap-back long" if up else f"RSI {rk.group(1)}: overbought pop inside a downtrend, snap-back short")
     p = dict(re.findall(r"(entry|SL|TP1|TP2) (\S+)", plan))
-    send(card(f"{'🟢 LONG' if up else '🔴 SHORT'} · {sym}", f"📌 24h {'breakout' if up else 'breakdown'} · {hhmm} WAT",
+    send(card(f"{'🟢 LONG' if up else '🔴 SHORT'} · {sym}", (f"📌 RSI snap-back · {hhmm} WAT" if rk else f"📌 24h {'breakout' if up else 'breakdown'} · {hhmm} WAT"),
               [("🚪 Entry", p['entry']), ("🛑 Stop", f"{p['SL']} ({risk}%)"), ("🎯 TP1", p['TP1']), ("🎯 TP2", p['TP2'])],
-              why, f"At 10x a stop costs ~{float(risk)*10:.0f}% of margin. " + ("NVDA backtest ~50% hit TP1 first, about breakeven: use your levels." if sym == "NVIDIA" else "Backtest ~54% hit TP1 first."),
+              why, f"At 10x a stop costs ~{float(risk)*10:.0f}% of margin. " + ("Backtest 72% hit TP1 first. Close most at TP1; the stop is 2x wider than TP1." if rk else "NVDA backtest ~50% hit TP1 first, about breakeven: use your levels." if sym == "NVIDIA" else "Backtest ~54% hit TP1 first."),
               "🔔 I'll ping you at TP or stop."))
-    track(sym, f"{side.lower()} breakout", plan, side)
+    track(sym, f"{side.lower()} {'rsi snap-back' if rk else 'breakout'}", plan, side)
 
 # ---- gainers short watcher ----
 for l in run(["python3", "scripts/gainers.py"]).splitlines():
