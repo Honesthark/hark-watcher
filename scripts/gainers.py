@@ -33,7 +33,9 @@ for s in dict.fromkeys(cand):
             if (j-hi_i>=2 and hi2*0.88<=h2<=hi2*0.98 and c2<o2 and pos<=0.4 and (up2>=0.3 or c2<pl2)
                 and c2>=hi2*0.75 and now-st.get(s+"_lh",0)>6*3600 and st.get(s+"_lht")!=t2):
                 st[s+"_lh"]=now; st[s+"_lht"]=t2
-                stop=h2*1.02; risk=stop-c2
+                # Fade stop: clear the 1h ATR above the bounce high (stop runs hunt the obvious level), capped just over the 24h high.
+                tr2=[max(k2["high"][i]-k2["low"][i],abs(k2["high"][i]-k2["close"][i-1]),abs(k2["low"][i]-k2["close"][i-1])) for i in range(max(1,n-14),n)]
+                atr=sum(tr2)/len(tr2); stop=min(max(h2*1.04,h2+atr),hi2*1.01); stop=max(stop,h2*1.02); risk=stop-c2
                 print(f"ALERT2 {s} 1h {time.strftime('%H:%M',time.gmtime(t2+3600))} WAT o{o2} h{h2} c{c2} | 24h +{round(float(x['riseFallRate'])*100,1)}% high {hi2} low {lo} | funding {f} | live {last} | entry {c2:.6g}-{(c2+h2)/2:.6g} stop {stop:.6g} tp1 {max(c2-risk*1.5,lo):.6g} tp2 {max(c2-risk*2.5,lo):.6g}")
     except Exception as e: print("lh err",s,e)
 json.dump(st,open(S,"w"))
