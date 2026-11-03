@@ -57,6 +57,24 @@ def card(head, sub, rows, why="", risk="", tail=""):
     return "\n".join(out)
 
 
+def board(sym, rows):
+    out = [f"📋 {sym} WHALE BOARD · {len(rows)} wallets", LINE]
+    ts = tn = 0; sellers = 0
+    for i, (w, st, nw) in enumerate(rows, 1):
+        ts += st; tn += nw; short = f"{w[:6]}…{w[-4:]}"
+        if st <= 0:
+            out.append(f"⚪ {i} · {short} · empty"); continue
+        sold = st - nw; kept = nw / st * 100
+        if sold > 1e6:
+            sellers += 1
+            out.append(f"🔴 {i} · {short}\n     {fmt(nw)} ({nw/1e9:.2f}%) · sold {fmt(sold)} · kept {kept:.1f}%")
+        else:
+            out.append(f"🟢 {i} · {short} · {fmt(nw)} ({nw/1e9:.2f}%) · 100%")
+    out += [LINE, f"🔴 Sold: {sellers} of {len(rows)} · 🟢 Holding: {sum(1 for _, st, nw in rows if st > 0 and st - nw <= 1e6)}",
+            f"📦 Left: {tn/1e9:.2f}B ({tn/1e9:.2f}% supply) · kept {tn/ts*100:.1f}%", f"💸 Sold so far: {fmt(ts - tn)}"]
+    return "\n".join(out)
+
+
 def raw(pat, text):
     m = re.search(pat + r"\s*~?\s*([0-9]*\.?[0-9]+(?:\s*-\s*[0-9]*\.?[0-9]+)?)", text, re.I)
     return m.group(1).replace(" ", "") if m else "?"
@@ -64,7 +82,7 @@ def raw(pat, text):
 
 def fmt(n):
     n = float(n)
-    return f"{n/1e6:.2f}M" if n >= 1e6 else f"{n/1e3:.1f}k" if n >= 1e3 else f"{n:.0f}"
+    return f"{n/1e9:.2f}B" if n >= 1e9 else f"{n/1e6:.2f}M" if n >= 1e6 else f"{n/1e3:.1f}k" if n >= 1e3 else f"{n:.0f}"
 
 
 # ---- trade tracker: follow every signal sent until TP2, SL or 48h ----
@@ -134,13 +152,16 @@ check_trades()
 for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "irys"), ("EVAA", "evaa"), ("AKE", "ake")]:
     out = run(["python3", f"scripts/{script}.py"])
     live = next((l.split()[1] for l in out.splitlines() if l.startswith("live ")), "?")
+    whale = []
     for l in out.splitlines():
-        if l.startswith("live"): continue
+        if l.startswith("BOARD ") and whale:
+            whale[-1] += "\n\n" + board(sym, json.loads(l[6:])); continue
+        if l.startswith("live") or l.startswith("BOARD "): continue
         if l.startswith("WHALE "):
             parts = l.split(); _, kind, w, amt, left, usd, tot = parts[:7]
             chg, fr = (parts[7:9] + ["na", "na"])[:2]
             sell = kind == "SELL"
-            send(card(f"🐋 {sym} · WHALE {kind} {'🔴' if sell else '🟢'}", f"{w[:6]}…{w[-4:]}",
+            whale.append(card(f"🐋 {sym} · WHALE {kind} {'🔴' if sell else '🟢'}", f"{w[:6]}…{w[-4:]}",
                       [("💰 Moved", f"{fmt(amt)} {sym} (~${float(usd):,.0f})"), ("👛 Left", fmt(left)),
                        ("📦 13 wallets", f"{float(tot)/1e9:.2f}B ({float(tot)/1e9:.1f}% supply)"), ("💲 Now", live),
                        ("📈 24h", f"{chg}%"), ("💸 Funding", f"{fr}%" + (" 🔥 crowded shorts" if fr != "na" and float(fr) < -0.1 else ""))],
@@ -173,6 +194,8 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
             if allow(sym + "MOM", 6): send(f"🟢 {sym} · MOMENTUM UP\n⛔ Shorts invalid, stay out\n{LINE}\n📊 {body}\n💲 Now {live}")
         elif ev == "INVALID":
             send(f"↩️ {sym} · SETUP B RESET\n{LINE}\n📊 {body}\n💲 Now {live}")
+
+    for m_ in whale: send(m_)
 
 # ---- BTC & ETH trend-breakout signals (long and short) ----
 for l in run(["python3", "scripts/majors.py"]).splitlines():
