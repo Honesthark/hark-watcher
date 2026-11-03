@@ -193,6 +193,21 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
                       why, f"{NOTE[sym]} 3-5x max, small size." + (" Price is below entry, wait for a bounce. Don't chase." if late else ""),
                       "🔔 I'll ping you at TP or stop."))
             track(sym, name, plan.replace("SL above", "SL"))
+        elif ev == "ALERT LONG DIP":
+            name = "Dip long, support held"
+            if not allow(sym + ev, 2): continue
+            cand, plan = (body.split(" Long plan: ") + [""])[:2]
+            e0 = num(r"entry", plan); late = False
+            if any(t["sym"] == sym and t["label"] == name for t in trades): print("dup long", sym); continue
+            try: late = bool(e0 and float(live) > e0 * 1.02)
+            except Exception: pass
+            why = re.sub(r"\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d\d:\d\d-\d\d:\d\d WAT", "", cand).strip().rstrip(".")
+            send(card(f"🟢 LONG · {sym}", f"📌 {name}",
+                      [("🚪 Entry", raw(r"entry", plan)), ("🛑 Stop", raw(r"SL(?: below)?", plan)),
+                       ("🎯 TP1", raw(r"TP1", plan)), ("🎯 TP2", raw(r"TP2", plan)), ("💲 Now", live)],
+                      why, f"{NOTE[sym]} 3x max, small size." + (" Price already bounced above entry, wait for a dip. Don't chase." if late else ""),
+                      "🔔 I'll ping you at TP or stop."))
+            track(sym, name, plan.replace("SL below", "SL"), "LONG")
         elif ev == "ALERT BREAK":
             send(f"⚠️ {sym} · HEADS-UP\nNot an entry yet\n{LINE}\n📊 {body}\n💲 Now {live}")
         elif ev == "MOMENTUM":
