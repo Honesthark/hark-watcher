@@ -1,4 +1,4 @@
-# STRK short watcher + whale-wallet watch. Plan of 2026-11-04 09:25 WAT after 30M STRK (~$1.32M) went from
+# STRK auto-level watcher + whale-wallet watch. Plan of 2026-11-04 09:25 WAT after 30M STRK (~$1.32M) went from
 # 0x6FC7...A218 to a Bybit deposit at 08:21 UTC. Price data: MEXC futures STRK_USDT. Wallet: STRK ERC-20 on Ethereum.
 import json,urllib.request,datetime as dt,os,time
 ST="state/strk.json"
@@ -9,23 +9,10 @@ ks=list(zip(d["time"],d["open"],d["high"],d["low"],d["close"]))
 now=time.time()
 closed=[k for k in ks if k[0]+900<=now]
 s=json.load(open(ST)) if os.path.exists(ST) else {}
-if s.get("plan")!="s1104": s={"last":closed[-1][0],"plan":"s1104","b2":False,"bal":s.get("bal",{})}
-W=dt.timezone(dt.timedelta(hours=1))
-f=lambda k,n=900:dt.datetime.fromtimestamp(k[0]+900-n,W).strftime("%a %H:%M")+"-"+dt.datetime.fromtimestamp(k[0]+900,W).strftime("%H:%M WAT")
-for k in closed:
-    if k[0]<=s["last"]: continue
-    h,c=k[2],k[4]
-    # A: pop into 0.044-0.045 resistance (Nov 3 high 0.0452) rejected on the 15m
-    if 0.0440<=h<0.0466 and 0.0420<=c<0.0436:
-        print(f"ALERT REJECTION: 15m candle {f(k)} pushed to {h} (0.044-0.045 resistance) and closed back at {c}. Short plan: entry ~0.0440, SL above 0.0466, TP1 0.0415, TP2 0.0400.")
-    if (k[0]+900)%3600==0:
-        # B: 1h close below 0.0400 support, short the breakdown once until reclaimed
-        if not s["b2"] and c<0.0400:
-            s["b2"]=True; print(f"ALERT BREAKDOWN: 1h close {f(k,3600)} at {c}, below 0.0400 support. Short plan: entry ~0.0398, SL above 0.0418, TP1 0.0380, TP2 0.0365.")
-        elif s["b2"] and c>0.0418:
-            s["b2"]=False; print(f"INVALID: 1h close {f(k,3600)} back above 0.0418 at {c}. Breakdown reclaimed, setup B reset.")
-        if c>0.0466: print(f"MOMENTUM: 1h close {f(k,3600)} at {c}, above 0.0466. Short ideas invalid, stay out.")
-    s["last"]=k[0]
+# Levels follow price automatically (scripts/autolv.py, 2026-11-04 22:40 WAT). Fixed A/B plans retired.
+import sys; sys.path.insert(0,"scripts"); import autolv
+if s.get("plan")!="auto": s={"plan":"auto","bal":s.get("bal",{})}
+autolv.run("STRK",s)
 
 # ---- whale wallet: alert when its STRK balance moves by 1M+ since the last run ----
 TOKEN="0xCa14007Eff0dB1f8135f4C25B34De49AB0d42766"
