@@ -1,4 +1,4 @@
-# AKE (BSC) short watcher + whale-wallet sell watch. Plan of 2026-11-02 16:47 WAT at 0.00539 after -41% day, -82% week.
+# AKE (BSC) auto-level watcher (was: short watcher) + whale-wallet sell watch. Plan of 2026-11-02 16:47 WAT at 0.00539 after -41% day, -82% week.
 # Price data: MEXC futures AKE_USDT 15m. Wallets: 13 big holders (25.8% of supply) the user flagged; 2 started selling on Nov 2.
 import json,urllib.request,datetime as dt,os,time
 ST="state/ake.json"
@@ -9,22 +9,10 @@ ks=list(zip(d["time"],d["open"],d["high"],d["low"],d["close"]))
 now=time.time()
 closed=[k for k in ks if k[0]+900<=now]
 s=json.load(open(ST)) if os.path.exists(ST) else {"bal":{}}
-# Bounce-short plan of 2026-11-04 22:20 WAT at 0.002573 (24h low 0.002421, funding -0.067%). Earlier plans retired. 15m candles.
-if s.get("plan")!="bs1104": s={"last":closed[-1][0],"plan":"bs1104","lo":False,"rl":0,"bal":s.get("bal",{})}
-W=dt.timezone(dt.timedelta(hours=1))
-f=lambda k:dt.datetime.fromtimestamp(k[0],W).strftime("%a %H:%M")+"-"+dt.datetime.fromtimestamp(k[0]+900,W).strftime("%H:%M WAT")
-for k in closed:
-    if k[0]<=s["last"]: continue
-    h,c=k[2],k[4]
-    # A: bounce into 0.0028-0.00284 resistance, rejected (max one alert per 2h)
-    if 0.0028<=h<0.0030 and 0.0026<=c<0.0028 and k[0]-s.get("rl",0)>=7200:
-        s["rl"]=k[0]; print(f"ALERT REJECTION: 15m candle {f(k)} bounced to {h} (0.0028-0.00284 resistance) and closed back at {c}. Short plan: entry ~0.0028, SL above 0.0030, TP1 0.00255, TP2 0.00245.")
-    # heads-up: new low under 0.00242 (once; resets on a 15m close back above 0.0026)
-    if not s.get("lo") and c<0.00242:
-        s["lo"]=True; print(f"ALERT BREAK: 15m candle {f(k)} closed at {c}, a new low under 0.00242. Heads-up only, no chase: funding is negative, squeeze risk.")
-    elif s.get("lo") and c>0.0026: s["lo"]=False
-    if (k[0]+900)%3600==0 and c>0.0030: print(f"MOMENTUM: 1h close {f(k)} at {c}, above 0.0030. Bounce-short idea invalid, stay out.")
-    s["last"]=k[0]
+# Levels now follow price automatically (scripts/autolv.py, added 2026-11-04 22:30 WAT). Fixed plans retired.
+import sys; sys.path.insert(0,"scripts"); import autolv
+if s.get("plan")!="auto": s={"plan":"auto","bal":s.get("bal",{})}
+autolv.run("AKE",s)
 
 # ---- whale wallets: alert when a balance drops (or jumps) by 5M+ AKE since the last run ----
 TOKEN="0x2c3a8Ee94dDD97244a93Bc48298f97d2C412F7Db"
