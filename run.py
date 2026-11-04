@@ -13,7 +13,8 @@ NOTE = {"AIN": "AIN wicks 15-20% in an hour.", "Q": "Q is a low-cap pump coin wi
         "BTW": "BTW has a thin book and huge wicks.", "IRYS": "IRYS has very thin books and huge wicks.",
         "EVAA": "EVAA just wicked +23% in one hour, so stops can get run.",
         "STRK": "STRK has a big unlock around Nov 13-15 and 30M just hit Bybit, but rallies on news can be sharp.",
-        "AKE": "AKE is deeply oversold after a -31% day, and relief bounces can be sharp, so stops get run."}
+        "AKE": "AKE is deeply oversold after a -31% day, and relief bounces can be sharp, so stops get run.",
+        "CLANKER": "CLANKER ran +35% in a day, so swings and squeezes are violent."}
 
 
 def send(text):
@@ -160,71 +161,77 @@ check_trades()
 
 
 # ---- setup watchers ----
-for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "irys"), ("EVAA", "evaa"), ("AKE", "ake"), ("STRK", "strk")]:
-    out = run(["python3", f"scripts/{script}.py"])
-    live = next((l.split()[1] for l in out.splitlines() if l.startswith("live ")), "?")
-    whale = []
-    for l in out.splitlines():
-        if l.startswith("BOARD ") and whale:
-            whale[-1] += "\n\n" + board(sym, json.loads(l[6:])); continue
-        if l.startswith("live") or l.startswith("BOARD "): continue
-        if l.startswith("WHALE "):
-            parts = l.split(); _, kind, w, amt, left, usd, tot = parts[:7]
-            chg, fr, st0 = (parts[7:10] + ["na", "na", "0"])[:3]
-            sell = kind == "SELL"; st0 = float(st0)
-            pct = float(left) / st0 * 100 if st0 > 0 else None
-            top = f"{'🔴 SOLD' if sell else ('🟢 RECEIVED' if sym == 'STRK' else '🟢 BOUGHT')} {fmt(amt)} ${sym} · ~${float(usd):,.0f}"
-            if pct is not None: top += f"\n{bar(pct)} {pct:.0f}% of their starting {sym} left"
-            whale.append(top + "\n\n" + card(f"🐋 {sym} · WHALE {kind} {'🔴' if sell else '🟢'}", f"{w[:6]}…{w[-4:]}",
-                      [("💰 Moved", f"{fmt(amt)} {sym} (~${float(usd):,.0f})"), ("👛 Left", fmt(left) + (f" ({pct:.0f}% of start)" if pct is not None else "")),
-                       *([("📦 13 wallets", f"{float(tot)/1e9:.2f}B ({float(tot)/1e9:.1f}% supply)")] if sym == "AKE" else []), ("💲 Now", live),
-                       ("📈 24h", f"{chg}%"), ("💸 Funding", f"{fr}%" + (" 🔥 crowded shorts" if fr != "na" and float(fr) < -0.1 else ""))],
-                      risk="More supply can hit the market. Watch the short setups." if sell else ("Wallet refilled: it sent 30M to Bybit on Nov 4, so another deposit may follow." if sym == "STRK" else ""),
-                      tail=f"🔗 https://{'etherscan.io' if sym == 'STRK' else 'bscscan.com'}/address/{w}"))
-            continue
-        m = re.match(r"(ALERT [A-Z ]+|MOMENTUM|INVALID):\s*(.*)", l)
-        if not m: continue
-        ev, body = m.group(1), m.group(2)
-        if ev in ("ALERT REJECTION", "ALERT RETEST FAILED", "ALERT SETUP A", "ALERT SETUP B", "ALERT BREAKDOWN"):
-            name = {"ALERT REJECTION": "Setup A, bounce rejected", "ALERT SETUP A": "Setup A, top failed",
-                    "ALERT SETUP B": "Setup B, blow-off rejected", "ALERT RETEST FAILED": "Setup B, failed retest", "ALERT BREAKDOWN": "Setup B, 1h breakdown"}[ev]
-            if sym in ("Q", "AIN", "STRK") and ev in ("ALERT REJECTION", "ALERT SETUP A") and not allow(sym + ev, 2 if sym == "Q" else 3): continue
-            cand, plan = (body.split(" Short plan: ") + [""])[:2]
-            e0 = num(r"entry", plan); late = ""
-            if any(t["sym"] == sym and t["label"] == name and t["entry"] == e0 for t in trades): print("dup signal", sym); continue
-            try:
-                if e0 and float(live) < e0 * 0.98: late = " Price is already below entry, so wait for a bounce toward entry rather than chasing."
-            except Exception: pass
-            why = re.sub(r"\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d\d:\d\d-\d\d:\d\d WAT", "", cand).strip().rstrip(".")
-            send(card(f"🔴 SHORT · {sym}", f"📌 {name}",
-                      [("🚪 Entry", raw(r"entry", plan)), ("🛑 Stop", raw(r"SL(?: above)?", plan)),
-                       ("🎯 TP1", raw(r"TP1", plan)), ("🎯 TP2", raw(r"TP2", plan)), ("💲 Now", live)],
-                      why, f"{NOTE[sym]} 3-5x max, small size." + (" Price is below entry, wait for a bounce. Don't chase." if late else ""),
-                      "🔔 I'll ping you at TP or stop."))
-            track(sym, name, plan.replace("SL above", "SL"))
-        elif ev == "ALERT LONG DIP":
-            name = "Dip long, support held"
-            if not allow(sym + ev, 2): continue
-            cand, plan = (body.split(" Long plan: ") + [""])[:2]
-            e0 = num(r"entry", plan); late = False
-            if any(t["sym"] == sym and t["label"] == name for t in trades): print("dup long", sym); continue
-            try: late = bool(e0 and float(live) > e0 * 1.02)
-            except Exception: pass
-            why = re.sub(r"\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d\d:\d\d-\d\d:\d\d WAT", "", cand).strip().rstrip(".")
-            send(card(f"🟢 LONG · {sym}", f"📌 {name}",
-                      [("🚪 Entry", raw(r"entry", plan)), ("🛑 Stop", raw(r"SL(?: below)?", plan)),
-                       ("🎯 TP1", raw(r"TP1", plan)), ("🎯 TP2", raw(r"TP2", plan)), ("💲 Now", live)],
-                      why, f"{NOTE[sym]} 3x max, small size." + (" Price already bounced above entry, wait for a dip. Don't chase." if late else ""),
-                      "🔔 I'll ping you at TP or stop."))
-            track(sym, name, plan.replace("SL below", "SL"), "LONG")
-        elif ev == "ALERT BREAK":
-            send(f"⚠️ {sym} · HEADS-UP\nNot an entry yet\n{LINE}\n📊 {body}\n💲 Now {live}")
-        elif ev == "MOMENTUM":
-            if allow(sym + "MOM", 6): send(f"🟢 {sym} · MOMENTUM UP\n⛔ Shorts invalid, stay out\n{LINE}\n📊 {body}\n💲 Now {live}")
-        elif ev == "INVALID":
-            send(f"↩️ {sym} · SETUP B RESET\n{LINE}\n📊 {body}\n💲 Now {live}")
+# All setup levels follow price (scripts/autolv.py, 2026-11-04). auto.py SYM = levels only; ake/btw/strk add their extras.
+WATCH = [("AIN", "scripts/auto.py AIN"), ("Q", "scripts/auto.py Q"), ("BTW", "scripts/btw.py"), ("IRYS", "scripts/auto.py IRYS"),
+         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER")]
+def setups():
+    for sym, script in WATCH:
+        out = run(["python3"] + script.split())
+        live = next((l.split()[1] for l in out.splitlines() if l.startswith("live ")), "?")
+        whale = []
+        for l in out.splitlines():
+            if l.startswith("BOARD ") and whale:
+                whale[-1] += "\n\n" + board(sym, json.loads(l[6:])); continue
+            if l.startswith("live") or l.startswith("BOARD "): continue
+            if l.startswith("WHALE "):
+                parts = l.split(); _, kind, w, amt, left, usd, tot = parts[:7]
+                chg, fr, st0 = (parts[7:10] + ["na", "na", "0"])[:3]
+                sell = kind == "SELL"; st0 = float(st0)
+                pct = float(left) / st0 * 100 if st0 > 0 else None
+                top = f"{'🔴 SOLD' if sell else ('🟢 RECEIVED' if sym == 'STRK' else '🟢 BOUGHT')} {fmt(amt)} ${sym} · ~${float(usd):,.0f}"
+                if pct is not None: top += f"\n{bar(pct)} {pct:.0f}% of their starting {sym} left"
+                whale.append(top + "\n\n" + card(f"🐋 {sym} · WHALE {kind} {'🔴' if sell else '🟢'}", f"{w[:6]}…{w[-4:]}",
+                          [("💰 Moved", f"{fmt(amt)} {sym} (~${float(usd):,.0f})"), ("👛 Left", fmt(left) + (f" ({pct:.0f}% of start)" if pct is not None else "")),
+                           *([("📦 13 wallets", f"{float(tot)/1e9:.2f}B ({float(tot)/1e9:.1f}% supply)")] if sym == "AKE" else []), ("💲 Now", live),
+                           ("📈 24h", f"{chg}%"), ("💸 Funding", f"{fr}%" + (" 🔥 crowded shorts" if fr != "na" and float(fr) < -0.1 else ""))],
+                          risk="More supply can hit the market. Watch the short setups." if sell else ("Wallet refilled: it sent 30M to Bybit on Nov 4, so another deposit may follow." if sym == "STRK" else ""),
+                          tail=f"🔗 https://{'etherscan.io' if sym == 'STRK' else 'bscscan.com'}/address/{w}"))
+                continue
+            m = re.match(r"(ALERT [A-Z ]+|MOMENTUM|INVALID):\s*(.*)", l)
+            if not m: continue
+            ev, body = m.group(1), m.group(2)
+            if ev in ("ALERT REJECTION", "ALERT RETEST FAILED", "ALERT SETUP A", "ALERT SETUP B", "ALERT BREAKDOWN"):
+                name = {"ALERT REJECTION": "Auto, rejected at 4h high", "ALERT SETUP A": "Setup A, top failed",
+                        "ALERT SETUP B": "Setup B, blow-off rejected", "ALERT RETEST FAILED": "Setup B, failed retest", "ALERT BREAKDOWN": "Setup B, 1h breakdown"}[ev]
+                if sym in ("Q", "AIN", "STRK") and ev in ("ALERT REJECTION", "ALERT SETUP A") and not allow(sym + ev, 2 if sym == "Q" else 3): continue
+                cand, plan = (body.split(" Short plan: ") + [""])[:2]
+                e0 = num(r"entry", plan); late = ""
+                if any(t["sym"] == sym and t["label"] == name and t["entry"] == e0 for t in trades): print("dup signal", sym); continue
+                try:
+                    if e0 and float(live) < e0 * 0.98: late = " Price is already below entry, so wait for a bounce toward entry rather than chasing."
+                except Exception: pass
+                why = re.sub(r"\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d\d:\d\d-\d\d:\d\d WAT", "", cand).strip().rstrip(".")
+                send(card(f"🔴 SHORT · {sym}", f"📌 {name}",
+                          [("🚪 Entry", raw(r"entry", plan)), ("🛑 Stop", raw(r"SL(?: above)?", plan)),
+                           ("🎯 TP1", raw(r"TP1", plan)), ("🎯 TP2", raw(r"TP2", plan)), ("💲 Now", live)],
+                          why, f"{NOTE[sym]} 3-5x max, small size." + (" Price is below entry, wait for a bounce. Don't chase." if late else ""),
+                          "🔔 I'll ping you at TP or stop."))
+                track(sym, name, plan.replace("SL above", "SL"))
+            elif ev == "ALERT LONG DIP":
+                name = "Auto, bounced off 4h low"
+                if not allow(sym + ev, 2): continue
+                cand, plan = (body.split(" Long plan: ") + [""])[:2]
+                e0 = num(r"entry", plan); late = False
+                if any(t["sym"] == sym and t["label"] == name for t in trades): print("dup long", sym); continue
+                try: late = bool(e0 and float(live) > e0 * 1.02)
+                except Exception: pass
+                why = re.sub(r"\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d\d:\d\d-\d\d:\d\d WAT", "", cand).strip().rstrip(".")
+                send(card(f"🟢 LONG · {sym}", f"📌 {name}",
+                          [("🚪 Entry", raw(r"entry", plan)), ("🛑 Stop", raw(r"SL(?: below)?", plan)),
+                           ("🎯 TP1", raw(r"TP1", plan)), ("🎯 TP2", raw(r"TP2", plan)), ("💲 Now", live)],
+                          why, f"{NOTE[sym]} 3x max, small size." + (" Price already bounced above entry, wait for a dip. Don't chase." if late else ""),
+                          "🔔 I'll ping you at TP or stop."))
+                track(sym, name, plan.replace("SL below", "SL"), "LONG")
+            elif ev == "ALERT BREAK":
+                send(f"⚠️ {sym} · HEADS-UP\nNot an entry yet\n{LINE}\n📊 {body}\n💲 Now {live}")
+            elif ev == "MOMENTUM":
+                if allow(sym + "MOM", 6): send(f"🟢 {sym} · MOMENTUM UP\n⛔ Shorts invalid, stay out\n{LINE}\n📊 {body}\n💲 Now {live}")
+            elif ev == "INVALID":
+                send(f"↩️ {sym} · SETUP B RESET\n{LINE}\n📊 {body}\n💲 Now {live}")
 
-    for m_ in whale: send(m_)
+        for m_ in whale: send(m_)
+
+setups()
 
 # ---- BTC & ETH trend-breakout signals (long and short) ----
 def handle_signals(out):
@@ -316,9 +323,14 @@ json.dump(trades, open(TR, "w"))
 # ---- fast tracker loop: GitHub cron fires about hourly, so keep checking stops/TPs every minute ----
 if not DRY:
     end = time.time() + 50 * 60
+    last_setup = time.time()
     while time.time() < end:
         time.sleep(60)
         handle_signals(run(["python3", "scripts/nvda15.py"], 60, 1))
+        if time.time() // 900 != last_setup // 900 and time.time() % 900 > 45:  # once per 15m candle, just after it closes
+            last_setup = time.time()
+            try: setups()
+            except Exception as e: print("setups err", e)
         check_trades()
         json.dump(trades, open(TR, "w"))
 print("done")
