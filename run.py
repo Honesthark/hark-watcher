@@ -12,6 +12,7 @@ FOOT = "Not a trade signal on its own. Keep size small, 3-5x max. MEXC data; Byb
 NOTE = {"AIN": "AIN wicks 15-20% in an hour.", "Q": "Q is a low-cap pump coin with huge wicks.",
         "BTW": "BTW has a thin book and huge wicks.", "IRYS": "IRYS has very thin books and huge wicks.",
         "EVAA": "EVAA just wicked +23% in one hour, so stops can get run.",
+        "STRK": "STRK has a big unlock around Nov 13-15 and 30M just hit Bybit, but rallies on news can be sharp.",
         "AKE": "AKE is deeply oversold after a -31% day, and relief bounces can be sharp, so stops get run."}
 
 
@@ -159,7 +160,7 @@ check_trades()
 
 
 # ---- setup watchers ----
-for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "irys"), ("EVAA", "evaa"), ("AKE", "ake")]:
+for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "irys"), ("EVAA", "evaa"), ("AKE", "ake"), ("STRK", "strk")]:
     out = run(["python3", f"scripts/{script}.py"])
     live = next((l.split()[1] for l in out.splitlines() if l.startswith("live ")), "?")
     whale = []
@@ -172,22 +173,22 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
             chg, fr, st0 = (parts[7:10] + ["na", "na", "0"])[:3]
             sell = kind == "SELL"; st0 = float(st0)
             pct = float(left) / st0 * 100 if st0 > 0 else None
-            top = f"{'🔴 SOLD' if sell else '🟢 BOUGHT'} {fmt(amt)} ${sym} · ~${float(usd):,.0f}"
+            top = f"{'🔴 SOLD' if sell else ('🟢 RECEIVED' if sym == 'STRK' else '🟢 BOUGHT')} {fmt(amt)} ${sym} · ~${float(usd):,.0f}"
             if pct is not None: top += f"\n{bar(pct)} {pct:.0f}% of their starting {sym} left"
             whale.append(top + "\n\n" + card(f"🐋 {sym} · WHALE {kind} {'🔴' if sell else '🟢'}", f"{w[:6]}…{w[-4:]}",
                       [("💰 Moved", f"{fmt(amt)} {sym} (~${float(usd):,.0f})"), ("👛 Left", fmt(left) + (f" ({pct:.0f}% of start)" if pct is not None else "")),
-                       ("📦 13 wallets", f"{float(tot)/1e9:.2f}B ({float(tot)/1e9:.1f}% supply)"), ("💲 Now", live),
+                       *([("📦 13 wallets", f"{float(tot)/1e9:.2f}B ({float(tot)/1e9:.1f}% supply)")] if sym == "AKE" else []), ("💲 Now", live),
                        ("📈 24h", f"{chg}%"), ("💸 Funding", f"{fr}%" + (" 🔥 crowded shorts" if fr != "na" and float(fr) < -0.1 else ""))],
-                      risk="More supply can hit the market. Watch the short setups." if sell else "",
-                      tail=f"🔗 https://bscscan.com/address/{w}"))
+                      risk="More supply can hit the market. Watch the short setups." if sell else ("Wallet refilled: it sent 30M to Bybit on Nov 4, so another deposit may follow." if sym == "STRK" else ""),
+                      tail=f"🔗 https://{'etherscan.io' if sym == 'STRK' else 'bscscan.com'}/address/{w}"))
             continue
         m = re.match(r"(ALERT [A-Z ]+|MOMENTUM|INVALID):\s*(.*)", l)
         if not m: continue
         ev, body = m.group(1), m.group(2)
-        if ev in ("ALERT REJECTION", "ALERT RETEST FAILED", "ALERT SETUP A", "ALERT SETUP B"):
+        if ev in ("ALERT REJECTION", "ALERT RETEST FAILED", "ALERT SETUP A", "ALERT SETUP B", "ALERT BREAKDOWN"):
             name = {"ALERT REJECTION": "Setup A, bounce rejected", "ALERT SETUP A": "Setup A, top failed",
-                    "ALERT SETUP B": "Setup B, blow-off rejected", "ALERT RETEST FAILED": "Setup B, failed retest"}[ev]
-            if sym in ("Q", "AIN") and ev in ("ALERT REJECTION", "ALERT SETUP A") and not allow(sym + ev, 3 if sym == "AIN" else 2): continue
+                    "ALERT SETUP B": "Setup B, blow-off rejected", "ALERT RETEST FAILED": "Setup B, failed retest", "ALERT BREAKDOWN": "Setup B, 1h breakdown"}[ev]
+            if sym in ("Q", "AIN", "STRK") and ev in ("ALERT REJECTION", "ALERT SETUP A") and not allow(sym + ev, 2 if sym == "Q" else 3): continue
             cand, plan = (body.split(" Short plan: ") + [""])[:2]
             e0 = num(r"entry", plan); late = ""
             if any(t["sym"] == sym and t["label"] == name and t["entry"] == e0 for t in trades): print("dup signal", sym); continue
