@@ -27,4 +27,5 @@ jobs:
           git config user.name "hark-watcher"
           git config user.email "actions@users.noreply.github.com"
           git add state
-          git diff --cached --quiet || (git commit -m "state" && git pull --rebase -X theirs && git push)
+          git diff --cached --quiet || git commit -m "state"
+          for i in 1 2 3 4 5; do git pull --rebase -X theirs && git push && exit 0; echo "push failed, retry $i"; sleep $((i*10)); done; exit 1
