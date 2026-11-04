@@ -1,33 +1,34 @@
 # AKE (BSC) short watcher + whale-wallet sell watch. Plan of 2026-11-02 16:47 WAT at 0.00539 after -41% day, -82% week.
-# Price data: MEXC futures AKE_USDT 1h. Wallets: 13 big holders (25.8% of supply) the user flagged; 2 started selling on Nov 2.
+# Price data: MEXC futures AKE_USDT 15m. Wallets: 13 big holders (25.8% of supply) the user flagged; 2 started selling on Nov 2.
 import json,urllib.request,datetime as dt,os,time
 ST="state/ake.json"
 UA={"User-Agent":"Mozilla/5.0"}
-u=f"https://contract.mexc.com/api/v1/contract/kline/AKE_USDT?interval=Min60&start={int(time.time())-3600*8}"
+u=f"https://contract.mexc.com/api/v1/contract/kline/AKE_USDT?interval=Min15&start={int(time.time())-3600*8}"
 d=json.load(urllib.request.urlopen(urllib.request.Request(u,headers=UA),timeout=15))["data"]
 ks=list(zip(d["time"],d["open"],d["high"],d["low"],d["close"]))
 now=time.time()
-closed=[k for k in ks if k[0]+3600<=now]
-first=not os.path.exists(ST)
-s=json.load(open(ST)) if not first else {"last":closed[-1][0],"broken":False,"bal":{}}
+closed=[k for k in ks if k[0]+900<=now]
+s=json.load(open(ST)) if os.path.exists(ST) else {"bal":{}}
+# Trend-short plan of 2026-11-04 06:20 WAT at 0.003106 (new lows, 1h RSI ~19). Nov 3 1h plan retired. 15m candles.
+if s.get("plan")!="tr1104": s={"last":closed[-1][0],"plan":"tr1104","b2":False,"bal":s.get("bal",{})}
 W=dt.timezone(dt.timedelta(hours=1))
-f=lambda k:dt.datetime.fromtimestamp(k[0],W).strftime("%a %H:%M")+"-"+dt.datetime.fromtimestamp(k[0]+3600,W).strftime("%H:%M WAT")
-# Fresh setups of 2026-11-03 16:05 WAT at 0.00414 (24h -25%, lows 0.003997). Old 0.0052-0.0066 plan retired.
-s.setdefault("b2",False)
+f=lambda k:dt.datetime.fromtimestamp(k[0],W).strftime("%a %H:%M")+"-"+dt.datetime.fromtimestamp(k[0]+900,W).strftime("%H:%M WAT")
 for k in closed:
     if k[0]<=s["last"]: continue
     h,c=k[2],k[4]
-    if 0.0044<=h<=0.00475 and c<0.0043:
-        print(f"ALERT REJECTION: 1h candle {f(k)} bounced to {h} (old 0.0044-0.0046 support, now resistance) and closed back at {c}. Short plan: entry ~0.00435, SL above 0.00475, TP1 0.00405, TP2 0.0038.")
+    # 1: bounce into the broken 0.0033-0.0034 floor, rejected
+    if 0.0033<=h<0.0035 and 0.0030<=c<0.0033:
+        print(f"ALERT REJECTION: 15m candle {f(k)} bounced to {h} (old 0.0033-0.0034 floor, now ceiling) and closed back at {c}. Short plan: entry ~0.0033, SL above 0.0035, TP1 0.0029, TP2 0.0027.")
+    # 2: lose 0.0030, then failed retest
     if not s["b2"]:
-        if c<0.00395:
-            s["b2"]=True; print(f"ALERT BREAK: 1h candle {f(k)} closed at {c}, below 0.00395 (under today's 0.003997 low). Heads-up only; watching for a failed retest of 0.00395-0.0040.")
+        if c<0.0030:
+            s["b2"]=True; print(f"ALERT BREAK: 15m candle {f(k)} closed at {c}, below 0.0030. Heads-up only; watching for a failed retest of 0.0030.")
     else:
-        if c>0.0043:
-            s["b2"]=False; print(f"INVALID: 1h candle {f(k)} closed back above 0.0043 at {c}. Breakdown reclaimed, setup B reset.")
-        elif h>=0.00393 and c<0.00395 and c>=0.0036:
-            print(f"ALERT RETEST FAILED: 1h candle {f(k)} wicked to {h} and closed at {c}, below 0.00395. Short plan: entry ~0.00393, SL above 0.00428, TP1 0.0036, TP2 0.0033.")
-    if c>0.00475: print(f"MOMENTUM: 1h candle {f(k)} closed at {c}, above 0.00475. Short ideas invalid, stay out.")
+        if c>0.0033:
+            s["b2"]=False; print(f"INVALID: 15m candle {f(k)} closed back above 0.0033 at {c}. Breakdown reclaimed, retest setup reset.")
+        elif h>=0.00298 and c<0.0030 and c>=0.0028:
+            print(f"ALERT RETEST FAILED: 15m candle {f(k)} wicked to {h} and closed at {c}, back under 0.0030. Short plan: entry ~0.0030, SL above 0.00318, TP1 0.0028, TP2 0.0026.")
+    if (k[0]+900)%3600==0 and c>0.00366: print(f"MOMENTUM: 1h close {f(k)} at {c}, above 0.00366 (the 05:00 high). Short ideas invalid, stay out.")
     s["last"]=k[0]
 
 # ---- whale wallets: alert when a balance drops (or jumps) by 5M+ AKE since the last run ----
