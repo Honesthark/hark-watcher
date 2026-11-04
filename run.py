@@ -59,6 +59,11 @@ def card(head, sub, rows, why="", risk="", tail=""):
     return "\n".join(out)
 
 
+def bar(p):
+    n = max(0, min(10, round(p / 10)))
+    return "▰" * n + "▱" * (10 - n)
+
+
 def board(sym, rows):
     out = [f"📋 {sym} WHALE BOARD · {len(rows)} wallets", LINE]
     ts = tn = 0; sellers = 0
@@ -69,7 +74,7 @@ def board(sym, rows):
         sold = st - nw; kept = nw / st * 100
         if sold > 1e6:
             sellers += 1
-            out.append(f"🔴 {i} · {short}\n     {fmt(nw)} ({nw/1e9:.2f}%) · sold {fmt(sold)} · kept {kept:.1f}%")
+            out.append(f"🔴 {i} · {short}\n     {fmt(nw)} ({nw/1e9:.2f}%) · sold {fmt(sold)}\n     {bar(kept)} {kept:.0f}% left")
         else:
             out.append(f"🟢 {i} · {short} · {fmt(nw)} ({nw/1e9:.2f}%) · 100%")
     out += [LINE, f"🔴 Sold: {sellers} of {len(rows)} · 🟢 Holding: {sum(1 for _, st, nw in rows if st > 0 and st - nw <= 1e6)}",
@@ -164,10 +169,13 @@ for sym, script in [("AIN", "ain"), ("Q", "qusdt"), ("BTW", "btw"), ("IRYS", "ir
         if l.startswith("live") or l.startswith("BOARD "): continue
         if l.startswith("WHALE "):
             parts = l.split(); _, kind, w, amt, left, usd, tot = parts[:7]
-            chg, fr = (parts[7:9] + ["na", "na"])[:2]
-            sell = kind == "SELL"
-            whale.append(card(f"🐋 {sym} · WHALE {kind} {'🔴' if sell else '🟢'}", f"{w[:6]}…{w[-4:]}",
-                      [("💰 Moved", f"{fmt(amt)} {sym} (~${float(usd):,.0f})"), ("👛 Left", fmt(left)),
+            chg, fr, st0 = (parts[7:10] + ["na", "na", "0"])[:3]
+            sell = kind == "SELL"; st0 = float(st0)
+            pct = float(left) / st0 * 100 if st0 > 0 else None
+            top = f"{'🔴 SOLD' if sell else '🟢 BOUGHT'} {fmt(amt)} ${sym} · ~${float(usd):,.0f}"
+            if pct is not None: top += f"\n{bar(pct)} {pct:.0f}% of their starting {sym} left"
+            whale.append(top + "\n\n" + card(f"🐋 {sym} · WHALE {kind} {'🔴' if sell else '🟢'}", f"{w[:6]}…{w[-4:]}",
+                      [("💰 Moved", f"{fmt(amt)} {sym} (~${float(usd):,.0f})"), ("👛 Left", fmt(left) + (f" ({pct:.0f}% of start)" if pct is not None else "")),
                        ("📦 13 wallets", f"{float(tot)/1e9:.2f}B ({float(tot)/1e9:.1f}% supply)"), ("💲 Now", live),
                        ("📈 24h", f"{chg}%"), ("💸 Funding", f"{fr}%" + (" 🔥 crowded shorts" if fr != "na" and float(fr) < -0.1 else ""))],
                       risk="More supply can hit the market. Watch the short setups." if sell else "",
