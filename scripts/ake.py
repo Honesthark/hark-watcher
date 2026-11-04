@@ -9,26 +9,21 @@ ks=list(zip(d["time"],d["open"],d["high"],d["low"],d["close"]))
 now=time.time()
 closed=[k for k in ks if k[0]+900<=now]
 s=json.load(open(ST)) if os.path.exists(ST) else {"bal":{}}
-# Trend-short plan of 2026-11-04 06:20 WAT at 0.003106 (new lows, 1h RSI ~19). Nov 3 1h plan retired. 15m candles.
-if s.get("plan")!="tr1104": s={"last":closed[-1][0],"plan":"tr1104","b2":False,"bal":s.get("bal",{})}
+# Bounce-short plan of 2026-11-04 22:20 WAT at 0.002573 (24h low 0.002421, funding -0.067%). Earlier plans retired. 15m candles.
+if s.get("plan")!="bs1104": s={"last":closed[-1][0],"plan":"bs1104","lo":False,"rl":0,"bal":s.get("bal",{})}
 W=dt.timezone(dt.timedelta(hours=1))
 f=lambda k:dt.datetime.fromtimestamp(k[0],W).strftime("%a %H:%M")+"-"+dt.datetime.fromtimestamp(k[0]+900,W).strftime("%H:%M WAT")
 for k in closed:
     if k[0]<=s["last"]: continue
     h,c=k[2],k[4]
-    # 1: bounce into the broken 0.0033-0.0034 floor, rejected
-    if 0.0033<=h<0.0035 and 0.0030<=c<0.0033:
-        print(f"ALERT REJECTION: 15m candle {f(k)} bounced to {h} (old 0.0033-0.0034 floor, now ceiling) and closed back at {c}. Short plan: entry ~0.0033, SL above 0.0035, TP1 0.0029, TP2 0.0027.")
-    # 2: lose 0.0030, then failed retest
-    if not s["b2"]:
-        if c<0.0030:
-            s["b2"]=True; print(f"ALERT BREAK: 15m candle {f(k)} closed at {c}, below 0.0030. Heads-up only; watching for a failed retest of 0.0030.")
-    else:
-        if c>0.0033:
-            s["b2"]=False; print(f"INVALID: 15m candle {f(k)} closed back above 0.0033 at {c}. Breakdown reclaimed, retest setup reset.")
-        elif h>=0.00298 and c<0.0030 and c>=0.0028:
-            print(f"ALERT RETEST FAILED: 15m candle {f(k)} wicked to {h} and closed at {c}, back under 0.0030. Short plan: entry ~0.0030, SL above 0.00318, TP1 0.0028, TP2 0.0026.")
-    if (k[0]+900)%3600==0 and c>0.00366: print(f"MOMENTUM: 1h close {f(k)} at {c}, above 0.00366 (the 05:00 high). Short ideas invalid, stay out.")
+    # A: bounce into 0.0028-0.00284 resistance, rejected (max one alert per 2h)
+    if 0.0028<=h<0.0030 and 0.0026<=c<0.0028 and k[0]-s.get("rl",0)>=7200:
+        s["rl"]=k[0]; print(f"ALERT REJECTION: 15m candle {f(k)} bounced to {h} (0.0028-0.00284 resistance) and closed back at {c}. Short plan: entry ~0.0028, SL above 0.0030, TP1 0.00255, TP2 0.00245.")
+    # heads-up: new low under 0.00242 (once; resets on a 15m close back above 0.0026)
+    if not s.get("lo") and c<0.00242:
+        s["lo"]=True; print(f"ALERT BREAK: 15m candle {f(k)} closed at {c}, a new low under 0.00242. Heads-up only, no chase: funding is negative, squeeze risk.")
+    elif s.get("lo") and c>0.0026: s["lo"]=False
+    if (k[0]+900)%3600==0 and c>0.0030: print(f"MOMENTUM: 1h close {f(k)} at {c}, above 0.0030. Bounce-short idea invalid, stay out.")
     s["last"]=k[0]
 
 # ---- whale wallets: alert when a balance drops (or jumps) by 5M+ AKE since the last run ----
