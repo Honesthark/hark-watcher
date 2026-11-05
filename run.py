@@ -57,6 +57,7 @@ def card(head, sub, rows, why="", risk="", tail=""):
     out += [f"{k.ljust(w)}  {v}" for k, v in rows]
     sz = size_line(rows)
     if sz: out += sz
+    if sz and loss_streak() >= 3: out.append(f"🛑 {loss_streak()} losses in a row today: sit out till tomorrow. Not counted in the tally.")
     out.append(LINE)
     if why: out.append(f"📊 {why}")
     if risk: out.append(f"❗️ {risk}")
@@ -91,11 +92,25 @@ PNL = "state/pnl.json"
 pnl = json.load(open(PNL)) if os.path.exists(PNL) else []
 
 
+def _today():
+    day0 = time.time() - (time.time() + 3600) % 86400   # midnight WAT
+    return [x for x in pnl if x["t"] >= day0 and not x.get("sitout")]
+
+
+def loss_streak():
+    n = 0
+    for x in reversed(_today()):
+        if x["usd"] < 0: n += 1
+        else: break
+    return n
+
+
 def book(tr, usd_res, outcome):
-    pnl.append({"sym": tr["sym"], "label": tr["label"], "t": int(time.time()), "usd": round(usd_res, 3), "res": outcome})
+    so = bool(tr.get("sitout"))
+    pnl.append({"sym": tr["sym"], "label": tr["label"], "t": int(time.time()), "usd": round(usd_res, 3), "res": outcome, "sitout": so})
     json.dump(pnl, open(PNL, "w"))
-    day0 = time.time() - (time.time() + 3600) % 86400
-    td = [x for x in pnl if x["t"] >= day0]
+    td = _today()
+    if so: return f"🚫 Sit-out trade, not counted in today's total.\n📒 Today: {sum(1 for x in td if x['usd'] > 0)}W-{sum(1 for x in td if x['usd'] < 0)}L · {sum(x['usd'] for x in td):+.2f} USD"
     w = sum(1 for x in td if x["usd"] > 0); l = sum(1 for x in td if x["usd"] < 0)
     return f"📒 Today ($1 @10x, half off at TP1): {w}W-{l}L · {sum(x['usd'] for x in td):+.2f} USD"
 
@@ -148,7 +163,7 @@ def track(sym, label, text, side="SHORT"):
     if None in (e, sl, t1, t2): print("track skip", sym); return
     if any(t["sym"] == sym and t["label"] == label and t["entry"] == e for t in trades): print("already tracking", sym); return
     trades.append({"sym": sym, "label": label, "side": side, "entry": e, "sl": sl, "tp1": t1, "tp2": t2,
-                   "t": time.time(), "chk": time.time(), "tp1hit": False})
+                   "t": time.time(), "chk": time.time(), "tp1hit": False, "sitout": loss_streak() >= 3})
 
 
 def kl(sym, since):
