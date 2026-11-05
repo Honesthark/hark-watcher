@@ -257,21 +257,20 @@ handle_signals(run(["python3", "scripts/nvda15.py"]))
 
 # ---- gainers short watcher ----
 for l in run(["python3", "scripts/gainers.py"]).splitlines():
-    # 2026-11-05: fade shorts (ALERT2) switched off at the user's request after the ELSA stop; top shorts (ALERT) stay.
-    if not l.startswith("ALERT "): continue
+    if not (l.startswith("ALERT ") or l.startswith("ALERT2 ")): continue
     lh = l.startswith("ALERT2")
     try:
         sym = l.split()[1].replace("_USDT", "")
         g = lambda k: re.search(r"(?:^|[ |])" + k + r" ?([\-0-9.e+]+)", l).group(1)
         t = re.search(r"1h (\d\d:\d\d) WAT", l).group(1)
-        ch = re.search(r"24h \+([0-9.]+)%", l).group(1)
+        ch = float(re.search(r"24h \+?(-?[0-9.]+)%", l).group(1))
         fund = float(g("funding")) * 100; live = g("live"); tp1 = float(g("tp1"))
         entry = re.search(r"entry ([0-9.e\-]+-[0-9.e\-]+)", l).group(1)
         warn = " Funding very negative: squeeze risk." if fund < -0.1 else ""
         played = float(live) <= tp1
         why = (f"Lower-high bounce failed under 24h high {g('high')}, closed {g('c')}. Riskier, trend can resume" if lh else
                f"Tagged 24h high {g('high')} and closed red at {g('c')}")
-        send(card(f"🔴 SHORT{' (fade)' if lh else ''} · {sym}", f"📌 +{ch}% in 24h · {t} WAT",
+        send(card(f"🔴 SHORT{' (fade)' if lh else ''} · {sym}", f"📌 {ch:+.1f}% in 24h · {t} WAT" + ("\n⚠️ HIGH RISK: fading a coin that's still pumping. Stops hit more often, use half size." if lh else ""),
                   [("🚪 Entry", entry), ("🛑 Stop", g('stop')), ("🎯 TP1", g('tp1')), ("🎯 TP2", g('tp2')),
                    ("💲 Now", live), ("💸 Funding", f"{fund:+.3f}%")],
                   why, "Wicks 20%+. 3-5x max, small size." + warn,
