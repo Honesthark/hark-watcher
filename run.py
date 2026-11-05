@@ -164,7 +164,8 @@ check_trades()
 # ---- setup watchers ----
 # All setup levels follow price (scripts/autolv.py, 2026-11-04). auto.py SYM = levels only; ake/btw/strk add their extras.
 WATCH = [("AIN", "scripts/auto.py AIN"), ("Q", "scripts/auto.py Q"), ("BTW", "scripts/btw.py"), ("IRYS", "scripts/auto.py IRYS"),
-         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR")]
+         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"),
+         ("AIN", "scripts/wallet.py AIN"), ("BTW", "scripts/wallet.py BTW")]  # whale-wallet watches added 2026-11-05
 def setups():
     for sym, script in WATCH:
         out = run(["python3"] + script.split())
