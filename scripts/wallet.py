@@ -1,0 +1,30 @@
+# Whale-wallet watch (BNB Chain), added 2026-11-05 10:58 WAT at the user's request.
+# Prints WHALE lines in the same format as strk.py when a watched wallet's balance moves by MIN tokens since the last run.
+# AIN 0x8047...3963 held 40.02M AIN. BTW 0x5437...B3A3 received 101.0M from 0x61D8...c9b4 and 96.4M from 0x60ad...55ad on Nov 5 ~08:37 UTC (197.4M total).
+import json,urllib.request,os,sys
+SYM=sys.argv[1]; ST=f"state/wallet_{SYM.lower()}.json"; UA={"User-Agent":"Mozilla/5.0"}
+CFG={"AIN":("0x9558a9254890B2A8B057a789F413631B9084f4a3",1e6,{"0x8047a4b87d07a4fc844bf27f3955c90989673963":40018678}),
+     "BTW":("0x444045B0EE1ee319A660a5E3d604CA0ffA35ACaA",1e6,{"0x543714F349970cD3b02d6Dc6A85ac8641f2BB3A3":197417759})}
+TOKEN,MIN,START=CFG[SYM]
+RPCS=["https://bsc-dataseed.bnbchain.org","https://bsc-dataseed1.defibit.io","https://bsc-rpc.publicnode.com"]
+def bal(w):
+    body=json.dumps({"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":TOKEN,"data":"0x70a08231"+w[2:].lower().rjust(64,"0")},"latest"]}).encode()
+    for r in RPCS:
+        try: return int(json.load(urllib.request.urlopen(urllib.request.Request(r,body,{"Content-Type":"application/json",**UA}),timeout=15))["result"],16)/1e18
+        except Exception: continue
+    return None
+try:
+    tk=json.load(urllib.request.urlopen(urllib.request.Request(f"https://contract.mexc.com/api/v1/contract/ticker?symbol={SYM}_USDT",headers=UA),timeout=15))["data"]
+    live=float(tk["lastPrice"]); ind=f"{float(tk['riseFallRate'])*100:+.1f} {float(tk['fundingRate'])*100:+.4f}"
+except Exception: live=0; ind="na na"
+s=json.load(open(ST)) if os.path.exists(ST) else {}
+for w in START:
+    b=bal(w)
+    if b is None: continue
+    old=s.get(w); s[w]=b
+    if old is None: continue
+    dlt=b-old
+    if abs(dlt)>=MIN:
+        print(f"WHALE {'SELL' if dlt<0 else 'BUY'} {w} {abs(dlt):.0f} {b:.0f} {abs(dlt)*live:.0f} {sum(s.values()):.0f} {ind} {START[w]}")
+json.dump(s,open(ST,"w"))
+print("live",live)
