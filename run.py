@@ -14,7 +14,8 @@ NOTE = {"AIN": "AIN wicks 15-20% in an hour.", "Q": "Q is a low-cap pump coin wi
         "EVAA": "EVAA just wicked +23% in one hour, so stops can get run.",
         "STRK": "STRK has a big unlock around Nov 13-15 and 30M just hit Bybit, but rallies on news can be sharp.",
         "AKE": "AKE is deeply oversold after a -31% day, and relief bounces can be sharp, so stops get run.",
-        "CLANKER": "CLANKER ran +35% in a day, so swings and squeezes are violent."}
+        "CLANKER": "CLANKER ran +35% in a day, so swings and squeezes are violent.",
+        "KOR": "KOR is a fresh listing down ~70% with a thin book, so wicks of 20% happen."}
 
 
 def send(text):
@@ -163,7 +164,7 @@ check_trades()
 # ---- setup watchers ----
 # All setup levels follow price (scripts/autolv.py, 2026-11-04). auto.py SYM = levels only; ake/btw/strk add their extras.
 WATCH = [("AIN", "scripts/auto.py AIN"), ("Q", "scripts/auto.py Q"), ("BTW", "scripts/btw.py"), ("IRYS", "scripts/auto.py IRYS"),
-         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER")]
+         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR")]
 def setups():
     for sym, script in WATCH:
         out = run(["python3"] + script.split())
