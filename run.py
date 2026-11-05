@@ -175,8 +175,9 @@ def kl(sym, since):
 def check_trades():
     keep = []
     for tr in trades:
+        if tr["chk"] > time.time(): tr["chk"] = tr["t"]   # guard: a bad future timestamp froze NVDA tracking (Nov 5)
         try:
-            ks = [k for k in kl(tr["sym"], tr["chk"] - 300) if k[0] + 300 > tr["chk"]]
+            ks = [k for k in kl(tr["sym"], tr["chk"] - 300) if k[0] + 300 > tr["chk"] and k[0] <= time.time()]
         except Exception as ex:
             print("tracker", tr["sym"], ex); keep.append(tr); continue
         done = False; last = ks[-1][3] if ks else "?"
@@ -202,7 +203,7 @@ def check_trades():
                 r_ = 0.5 * usd(pc(tr['tp1'])) + 0.5 * usd(pc(tr['tp2']))
                 send(f"🎯 {tr['sym']} · TP2 HIT\n{tr['label']}\n🟢 TP2 {tr['tp2']} (+{pc(tr['tp2']):.1f}% before leverage)\n🏁 Trade complete\n💵 {r_:+.2f} USD on $1 @10x\n💲 Now {last}\n⏱ Trade time: {dur(ts)}\n" + book(tr, r_, "TP2"))
                 done = True; break
-        if ks: tr["chk"] = ks[-1][0]
+        if ks: tr["chk"] = min(ks[-1][0], time.time())
         if not done and tr.get("exp") and time.time() >= tr["exp"]:
             gain = (float(last) - tr["entry"]) / tr["entry"] * 100 * d if last != "?" else 0
             r_ = (0.5 * usd(pc(tr['tp1'])) + 0.5 * usd(gain)) if tr["tp1hit"] else usd(gain)
