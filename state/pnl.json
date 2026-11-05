@@ -1,1 +1,1 @@
-[{"sym": "NVIDIA", "label": "post-close reversal", "t": 1793916923, "usd": 0.05, "res": "BE", "sitout": false}, {"sym": "Q", "label": "Auto, rejected at 4h high", "t": 1793919902, "usd": 0.541, "res": "TP2", "sitout": false}]
+[{"sym": "Q", "label": "Auto, rejected at 4h high", "t": 1793919979, "usd": 0.541, "res": "TP2", "sitout": false}, {"sym": "NVIDIA", "label": "post-close reversal", "t": 1793919980, "usd": 0.25, "res": "BE", "sitout": false}]
