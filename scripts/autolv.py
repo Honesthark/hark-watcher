@@ -17,11 +17,11 @@ def f(k): return dt.datetime.fromtimestamp(k[0],W).strftime("%a %H:%M")+"-"+dt.d
 def signals(ks,i,a,fr=0.0):
     """events for closed candle ks[i]; a = state dict (rate limits). returns list of strings"""
     out=[]; k=ks[i]; t,o,h,l,c=k
-    if i<120: return out
+    if i<40: return out  # new listings: start after 10h of 15m data
     tr=[max(x[2],ks[j-1][4])-min(x[3],ks[j-1][4]) for j,x in enumerate(ks[i-14:i+1],start=i-14)]
     atr=sum(tr[1:])/14
-    e=ks[i-120][4]; m=2/101
-    for x in ks[i-119:i+1]: e=x[4]*m+e*(1-m)
+    j0=max(0,i-120); e=ks[j0][4]; m=2/101
+    for x in ks[j0+1:i+1]: e=x[4]*m+e*(1-m)
     R=max(x[2] for x in ks[i-16:i]); S=min(x[3] for x in ks[i-16:i])
     R8=max(x[2] for x in ks[i-32:i]); S8=min(x[3] for x in ks[i-32:i])
     ok=lambda key,hrs:t-a.get(key,0)>=hrs*3600
