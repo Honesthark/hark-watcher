@@ -147,6 +147,9 @@ def check_trades():
                 send(f"🎯 {tr['sym']} · TP2 HIT\n{tr['label']}\n🟢 TP2 {tr['tp2']} (+{pc(tr['tp2']):.1f}% before leverage)\n🏁 Trade complete\n💲 Now {last}\n⏱ Trade time: {dur(ts)}")
                 done = True; break
         if ks: tr["chk"] = ks[-1][0]
+        if not done and tr.get("exp") and time.time() >= tr["exp"]:
+            gain = (float(last) - tr["entry"]) / tr["entry"] * 100 * d if last != "?" else 0
+            send(f"⏰ {tr['sym']} · TIME EXIT\n{tr['label']}\n👉 1 hour is up: close the trade now\n{'🟢' if gain >= 0 else '🔴'} {gain:+.2f}% before leverage (entry {tr['entry']})\n💲 Now {last}"); done = True
         if not done and time.time() - tr["t"] > 48 * 3600:
             send(f"⌛ {tr['sym']} · EXPIRED\n{tr['label']}\nNo TP2 or stop in 48h · stopped tracking\n💲 Now {last}"); done = True
         if not done: keep.append(tr)
@@ -253,6 +256,24 @@ def handle_signals(out):
                 "🔔 I'll ping you at TP or stop."))
       track(sym, f"{side.lower()} {'rsi snap-back' if rk else 'breakout'}", plan, side)
 
+# ---- NVDA post-close reversal (once per weekday, 16:00-16:30 New York time) ----
+def handle_closerev(out):
+  for l in out.splitlines():
+      if not l.startswith("CLOSEREV"): continue
+      f = l.split(); side = f[1]; up = side == "LONG"
+      p = dict(zip(f[2::2], f[3::2]))
+      if any(t["sym"] == "NVIDIA" and t["label"] == "post-close reversal" for t in trades): continue
+      send(card(f"{'🟢 LONG' if up else '🔴 SHORT'} · NVDA", f"📌 Post-close reversal · exit {p['exit']} WAT",
+                [("📊 Last hour", f"{p['move']}% ({p['c15']} → {p['c16']})"), ("🚪 Entry", p['entry']), ("🛑 Stop", f"{p['SL']} (1%)"),
+                 ("🎯 TP1", f"{p['TP1']} (1%)"), ("🎯 TP2", f"{p['TP2']} (1.5%)"), ("⏰ Exit", f"{p['exit']} WAT if no TP or stop")],
+                f"NVDA {'fell' if up else 'rose'} {p['move'].lstrip('+-')}% in the last hour before the US close; after the close it usually snaps back.",
+                "Futures only (MEXC event bets are closed now). Backtest 67% win over 11 months, avg +0.11% a trade before leverage. 3-5x max.",
+                "🔔 I'll ping you at TP, stop, or the 1-hour exit."))
+      track("NVIDIA", "post-close reversal", f"entry {p['entry']} SL {p['SL']} TP1 {p['TP1']} TP2 {p['TP2']}", side)
+      for t in trades:
+          if t["sym"] == "NVIDIA" and t["label"] == "post-close reversal": t["exp"] = int(p["exp"])
+
+handle_closerev(run(["python3", "scripts/nvdaclose.py"], 60, 1))
 handle_signals(run(["python3", "scripts/majors.py"]))
 handle_signals(run(["python3", "scripts/nvda15.py"]))
 
@@ -329,6 +350,7 @@ if not DRY:
     while time.time() < end:
         time.sleep(60)
         handle_signals(run(["python3", "scripts/nvda15.py"], 60, 1))
+        handle_closerev(run(["python3", "scripts/nvdaclose.py"], 60, 1))
         if time.time() // 900 != last_setup // 900 and time.time() % 900 > 45:  # once per 15m candle, just after it closes
             last_setup = time.time()
             try: setups()
