@@ -73,8 +73,8 @@ def _first(v):
 
 
 def usd(pct):
-    """dollar result on $1 margin at 10x for a price move of pct %; a loss can't exceed the margin."""
-    return max(-MARGIN, MARGIN * LEV * pct / 100)
+    """dollar result on $1 margin at 10x CROSS for a price move of pct % (cross: a loss can exceed the $1 margin)."""
+    return MARGIN * LEV * pct / 100
 
 
 def size_line(rows):
@@ -82,8 +82,8 @@ def size_line(rows):
     e, sl, t1 = _first(d.get("Entry")), _first(d.get("Stop")), _first(d.get("TP1"))
     if not e or not sl or not t1: return []
     sp, tp = abs(sl - e) / e * 100, abs(t1 - e) / e * 100
-    out = [f"💵 $1 @10x  stop −${min(MARGIN, MARGIN * LEV * sp / 100):.2f} · TP1 +${MARGIN * LEV * tp / 100:.2f}"]
-    if sp >= 9: out.append(f"⛔ Stop is {sp:.0f}% away: at 10x you'd be liquidated first. Skip, or use 3x.")
+    out = [f"💵 $1 @10x  stop −${MARGIN * LEV * sp / 100:.2f} · TP1 +${MARGIN * LEV * tp / 100:.2f}"]
+    if sp >= 10: out.append(f"⚠️ Wide stop ({sp:.0f}%): on cross it costs ${MARGIN * LEV * sp / 100:.2f}, more than your $1. Use ${10 / sp:.2f} margin to keep the loss at $1.")
     return out
 
 
