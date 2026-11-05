@@ -257,7 +257,8 @@ handle_signals(run(["python3", "scripts/nvda15.py"]))
 
 # ---- gainers short watcher ----
 for l in run(["python3", "scripts/gainers.py"]).splitlines():
-    if not (l.startswith("ALERT ") or l.startswith("ALERT2 ")): continue
+    # 2026-11-05: fade shorts (ALERT2) switched off at the user's request after the ELSA stop; top shorts (ALERT) stay.
+    if not l.startswith("ALERT "): continue
     lh = l.startswith("ALERT2")
     try:
         sym = l.split()[1].replace("_USDT", "")
