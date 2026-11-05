@@ -254,6 +254,9 @@ def setups():
             m = re.match(r"(ALERT [A-Z ]+|MOMENTUM|INVALID):\s*(.*)", l)
             if not m: continue
             ev, body = m.group(1), m.group(2)
+            # 2026-11-05: autolv shorts OFF (90d backtest: shorts lost in every variant; longs +$18, positive both halves).
+            # Shorts now come only from the gainers scanner. Short-side heads-ups/resets/momentum are muted too.
+            if ev != "ALERT LONG DIP": print("autolv short off", sym, ev); continue
             if ev in ("ALERT REJECTION", "ALERT RETEST FAILED", "ALERT SETUP A", "ALERT SETUP B", "ALERT BREAKDOWN"):
                 name = {"ALERT REJECTION": "Auto, rejected at 4h high", "ALERT SETUP A": "Setup A, top failed",
                         "ALERT SETUP B": "Setup B, blow-off rejected", "ALERT RETEST FAILED": "Setup B, failed retest", "ALERT BREAKDOWN": "Setup B, 1h breakdown"}[ev]
