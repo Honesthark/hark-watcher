@@ -55,11 +55,49 @@ def card(head, sub, rows, why="", risk="", tail=""):
     w = max(len(k) for k, _ in rows) if rows else 0
     out = [head] + ([sub] if sub else []) + [LINE]
     out += [f"{k.ljust(w)}  {v}" for k, v in rows]
+    sz = size_line(rows)
+    if sz: out += sz
     out.append(LINE)
     if why: out.append(f"📊 {why}")
     if risk: out.append(f"❗️ {risk}")
     if tail: out.append(tail)
     return "\n".join(out)
+
+
+MARGIN, LEV = 1.0, 10   # user's standard: $1 margin at 10x on every trade (set 2026-11-05)
+
+
+def _first(v):
+    m = re.search(r"[0-9]*\.?[0-9]+(?:e-?\d+)?", str(v))
+    return float(m.group(0)) if m else None
+
+
+def usd(pct):
+    """dollar result on $1 margin at 10x for a price move of pct %; a loss can't exceed the margin."""
+    return max(-MARGIN, MARGIN * LEV * pct / 100)
+
+
+def size_line(rows):
+    d = {k.split()[-1]: v for k, v in rows}
+    e, sl, t1 = _first(d.get("Entry")), _first(d.get("Stop")), _first(d.get("TP1"))
+    if not e or not sl or not t1: return []
+    sp, tp = abs(sl - e) / e * 100, abs(t1 - e) / e * 100
+    out = [f"💵 $1 @10x  stop −${min(MARGIN, MARGIN * LEV * sp / 100):.2f} · TP1 +${MARGIN * LEV * tp / 100:.2f}"]
+    if sp >= 9: out.append(f"⛔ Stop is {sp:.0f}% away: at 10x you'd be liquidated first. Skip, or use 3x.")
+    return out
+
+
+PNL = "state/pnl.json"
+pnl = json.load(open(PNL)) if os.path.exists(PNL) else []
+
+
+def book(tr, usd_res, outcome):
+    pnl.append({"sym": tr["sym"], "label": tr["label"], "t": int(time.time()), "usd": round(usd_res, 3), "res": outcome})
+    json.dump(pnl, open(PNL, "w"))
+    day0 = time.time() - (time.time() + 3600) % 86400
+    td = [x for x in pnl if x["t"] >= day0]
+    w = sum(1 for x in td if x["usd"] > 0); l = sum(1 for x in td if x["usd"] < 0)
+    return f"📒 Today ($1 @10x, half off at TP1): {w}W-{l}L · {sum(x['usd'] for x in td):+.2f} USD"
 
 
 def bar(p):
@@ -136,22 +174,28 @@ def check_trades():
         for ts, h, l, c in ks:
             if (d == -1 and h >= stop) or (d == 1 and l <= stop):
                 if tr["tp1hit"]:
-                    send(f"➖ {tr['sym']} · BREAKEVEN\n{tr['label']}\nBack to entry {tr['entry']} after TP1\n✅ TP1 profit kept · trade closed\n💲 Now {last}\n⏱ Trade time: {dur(ts)}")
+                    r_ = 0.5 * usd(pc(tr['tp1']))
+                    send(f"➖ {tr['sym']} · BREAKEVEN\n{tr['label']}\nBack to entry {tr['entry']} after TP1\n✅ TP1 profit kept · trade closed\n💵 {r_:+.2f} USD on $1 @10x\n💲 Now {last}\n⏱ Trade time: {dur(ts)}\n" + book(tr, r_, "BE"))
                 else:
-                    send(f"❌ {tr['sym']} · STOP HIT\n{tr['label']}\n🔴 Stop {tr['sl']} (−{pc(tr['sl']):.1f}% before leverage)\nEntry was {tr['entry']} · trade closed\n💲 Now {last}\n⏱ Trade time: {dur(ts)}")
+                    r_ = usd(-pc(tr['sl']))
+                    send(f"❌ {tr['sym']} · STOP HIT\n{tr['label']}\n🔴 Stop {tr['sl']} (−{pc(tr['sl']):.1f}% before leverage)\nEntry was {tr['entry']} · trade closed\n💵 {r_:+.2f} USD on $1 @10x\n💲 Now {last}\n⏱ Trade time: {dur(ts)}\n" + book(tr, r_, "SL"))
                 done = True; break
             if not tr["tp1hit"] and ((d == -1 and l <= tr["tp1"]) or (d == 1 and h >= tr["tp1"])):
                 tr["tp1hit"] = True; stop = tr["entry"]
                 send(f"✅ {tr['sym']} · TP1 HIT\n{tr['label']}\n🟢 TP1 {tr['tp1']} (+{pc(tr['tp1']):.1f}% before leverage)\n👉 Take partial profit, move stop to entry {tr['entry']}\n🎯 Next: TP2 {tr['tp2']}\n💲 Now {last}\n⏱ Trade time: {dur(ts)}")
             if tr["tp1hit"] and ((d == -1 and l <= tr["tp2"]) or (d == 1 and h >= tr["tp2"])):
-                send(f"🎯 {tr['sym']} · TP2 HIT\n{tr['label']}\n🟢 TP2 {tr['tp2']} (+{pc(tr['tp2']):.1f}% before leverage)\n🏁 Trade complete\n💲 Now {last}\n⏱ Trade time: {dur(ts)}")
+                r_ = 0.5 * usd(pc(tr['tp1'])) + 0.5 * usd(pc(tr['tp2']))
+                send(f"🎯 {tr['sym']} · TP2 HIT\n{tr['label']}\n🟢 TP2 {tr['tp2']} (+{pc(tr['tp2']):.1f}% before leverage)\n🏁 Trade complete\n💵 {r_:+.2f} USD on $1 @10x\n💲 Now {last}\n⏱ Trade time: {dur(ts)}\n" + book(tr, r_, "TP2"))
                 done = True; break
         if ks: tr["chk"] = ks[-1][0]
         if not done and tr.get("exp") and time.time() >= tr["exp"]:
             gain = (float(last) - tr["entry"]) / tr["entry"] * 100 * d if last != "?" else 0
-            send(f"⏰ {tr['sym']} · TIME EXIT\n{tr['label']}\n👉 1 hour is up: close the trade now\n{'🟢' if gain >= 0 else '🔴'} {gain:+.2f}% before leverage (entry {tr['entry']})\n💲 Now {last}"); done = True
+            r_ = (0.5 * usd(pc(tr['tp1'])) + 0.5 * usd(gain)) if tr["tp1hit"] else usd(gain)
+            send(f"⏰ {tr['sym']} · TIME EXIT\n{tr['label']}\n👉 1 hour is up: close the trade now\n{'🟢' if gain >= 0 else '🔴'} {gain:+.2f}% before leverage (entry {tr['entry']})\n💵 {r_:+.2f} USD on $1 @10x\n💲 Now {last}\n" + book(tr, r_, "TIME")); done = True
         if not done and time.time() - tr["t"] > 48 * 3600:
-            send(f"⌛ {tr['sym']} · EXPIRED\n{tr['label']}\nNo TP2 or stop in 48h · stopped tracking\n💲 Now {last}"); done = True
+            g2 = (float(last) - tr["entry"]) / tr["entry"] * 100 * d if last != "?" else 0
+            r_ = (0.5 * usd(pc(tr['tp1'])) + 0.5 * usd(g2)) if tr["tp1hit"] else usd(g2)
+            send(f"⌛ {tr['sym']} · EXPIRED\n{tr['label']}\nNo TP2 or stop in 48h · stopped tracking\n💵 {r_:+.2f} USD on $1 @10x if closed now\n💲 Now {last}\n" + book(tr, r_, "EXP")); done = True
         if not done: keep.append(tr)
     trades[:] = keep
 
