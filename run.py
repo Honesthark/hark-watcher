@@ -15,6 +15,7 @@ NOTE = {"AIN": "AIN wicks 15-20% in an hour.", "Q": "Q is a low-cap pump coin wi
         "STRK": "STRK has a big unlock around Nov 13-15 and 30M just hit Bybit, but rallies on news can be sharp.",
         "AKE": "AKE is deeply oversold after a -31% day, and relief bounces can be sharp, so stops get run.",
         "CLANKER": "CLANKER ran +35% in a day, so swings and squeezes are violent.",
+        "BIRB": "BIRB is up ~30% today and 2M (~$219k) just went into Gate, so expect sell pressure and squeezes (funding negative).",
         "KOR": "KOR is a fresh listing down ~70% with a thin book, so wicks of 20% happen."}
 
 
@@ -239,7 +240,7 @@ check_trades()
 # ---- setup watchers ----
 # All setup levels follow price (scripts/autolv.py, 2026-11-04). auto.py SYM = levels only; ake/btw/strk add their extras.
 WATCH = [("AIN", "scripts/auto.py AIN"), ("Q", "scripts/auto.py Q"), ("BTW", "scripts/btw.py"), ("IRYS", "scripts/auto.py IRYS"),
-         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("AKE", "scripts/akefix.py"), ("AIN", "scripts/ainfix.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"),
+         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("AKE", "scripts/akefix.py"), ("AIN", "scripts/ainfix.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"), ("BIRB", "scripts/auto.py BIRB"),
          ("AIN", "scripts/wallet.py AIN"), ("BTW", "scripts/wallet.py BTW")]  # whale-wallet watches added 2026-11-05
 def setups():
     for sym, script in WATCH:
