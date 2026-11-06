@@ -190,6 +190,7 @@ def check_trades():
         if tr["chk"] > time.time(): tr["chk"] = tr["t"]   # guard: a bad future timestamp froze NVDA tracking (Nov 5)
         try:
             ks = [k for k in kl(tr["sym"], tr["chk"] - 300) if k[0] + 300 > tr["chk"] and k[0] <= time.time()]
+            if tr.get("exp"): ks = [k for k in ks if k[0] < tr["exp"]]   # 2026-11-06: ignore candles after the time exit (a late run must not score TP/SL after expiry)
         except Exception as ex:
             print("tracker", tr["sym"], ex); keep.append(tr); continue
         done = False; last = ks[-1][3] if ks else "?"
@@ -217,9 +218,12 @@ def check_trades():
                 done = True; break
         if ks: tr["chk"] = min(ks[-1][0], time.time())
         if not done and tr.get("exp") and time.time() >= tr["exp"]:
+            xs = [k for k in ks if k[0] + 300 <= tr["exp"] + 60]
+            if xs: last = xs[-1][3]   # exit price = close of the 5m candle at the exit time, not the price when this run got to it
             gain = (float(last) - tr["entry"]) / tr["entry"] * 100 * d if last != "?" else 0
             r_ = (0.5 * usd(pc(tr['tp1']), lev(tr['sym'])) + 0.5 * usd(gain, lev(tr['sym']))) if tr["tp1hit"] else usd(gain, lev(tr['sym']))
-            send(f"⏰ {tr['sym']} · TIME EXIT\n{tr['label']}\n👉 1 hour is up: close the trade now\n{'🟢' if gain >= 0 else '🔴'} {gain:+.2f}% before leverage (entry {tr['entry']})\n📈 {r_:+.2f}% price move\n💲 Now {last}\n" + book(tr, r_, "TIME")); done = True
+            xt = time.strftime("%H:%M", time.gmtime(tr["exp"] + 3600)); late = time.time() > tr["exp"] + 600
+            send(f"⏰ {tr['sym']} · TIME EXIT\n{tr['label']}\n👉 Exit time {xt} WAT: close the trade\n🚪 Exit price {last} (entry {tr['entry']})\n{'🟢' if gain >= 0 else '🔴'} {gain:+.2f}% before leverage\n📈 {r_:+.2f}% price move" + (f"\n⚠️ Sent late: the watcher was down at {xt}." if late else "") + "\n" + book(tr, r_, "TIME")); done = True
         if not done and time.time() - tr["t"] > 48 * 3600:
             g2 = (float(last) - tr["entry"]) / tr["entry"] * 100 * d if last != "?" else 0
             r_ = (0.5 * usd(pc(tr['tp1']), lev(tr['sym'])) + 0.5 * usd(g2, lev(tr['sym']))) if tr["tp1hit"] else usd(g2, lev(tr['sym']))
@@ -422,7 +426,8 @@ json.dump(trades, open(TR, "w"))
 if not DRY:
     end = time.time() + 50 * 60
     last_setup = time.time()
-    while time.time() < end:
+    hard = time.time() + 70 * 60   # job timeout is 75 min
+    while time.time() < end or any(t.get("exp") and t["exp"] + 120 > time.time() for t in trades) and time.time() < hard:
         time.sleep(60)
         handle_signals(run(["python3", "scripts/nvda15.py"], 60, 1))
         handle_closerev(run(["python3", "scripts/nvdaclose.py"], 60, 1))
