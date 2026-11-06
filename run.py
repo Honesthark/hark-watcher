@@ -103,8 +103,15 @@ def _today():
 
 
 def loss_streak():
+    # a win (any closed trade in profit, or an open trade that already hit TP1) resets the streak, sit-out trades included
+    day0 = time.time() - (time.time() + 3600) % 86400
+    allx = [x for x in pnl if x["t"] >= day0]
+    last_loss = max([x["t"] for x in allx if x["usd"] < 0], default=0)
+    try:
+        if any(t.get("tp1hit") and t.get("t", 0) > last_loss for t in trades): return 0
+    except NameError: pass
     n = 0
-    for x in reversed(_today()):
+    for x in reversed(allx):
         if x["usd"] < 0: n += 1
         else: break
     return n
