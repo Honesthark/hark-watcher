@@ -2,7 +2,7 @@
 # Trigger: a closed 1h candle wicks to 0.0039+ and closes below 0.0037 -> short. Cancel: a 1h close above 0.0041.
 import json, os, time, urllib.request, datetime as dt
 ST = "state/akefix.json"; EXP = 1794114000  # 2026-11-08 06:00 WAT
-s = json.load(open(ST)) if os.path.exists(ST) else {"last": 1794042000, "done": False}  # from 2026-11-06 05:00 WAT bar
+s = json.load(open(ST)) if os.path.exists(ST) else {"last": 1793937600, "done": False}  # from 2026-11-06 05:00 WAT bar
 u = f"https://contract.mexc.com/api/v1/contract/kline/AKE_USDT?interval=Min60&start={int(time.time()) - 12 * 3600}"
 d = json.load(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "curl/8.5.0"}), timeout=20))["data"]
 W = dt.timezone(dt.timedelta(hours=1))
