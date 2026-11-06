@@ -8,7 +8,7 @@ DRY = "--dry" in sys.argv
 if not DRY and not (TOKEN and CHAT): sys.exit("TG_TOKEN / TG_CHAT secret missing")
 RL = "state/ratelimit.json"
 rl = json.load(open(RL)) if os.path.exists(RL) else {}
-FOOT = "Not a trade signal on its own. Keep size small, 3-5x max. MEXC data; Bybit may differ."
+FOOT = "Not a trade signal on its own. MEXC data; Bybit may differ."
 NOTE = {"AIN": "AIN wicks 15-20% in an hour.", "Q": "Q is a low-cap pump coin with huge wicks.",
         "BTW": "BTW has a thin book and huge wicks.", "IRYS": "IRYS has very thin books and huge wicks.",
         "EVAA": "EVAA just wicked +23% in one hour, so stops can get run.",
@@ -57,7 +57,7 @@ def card(head, sub, rows, why="", risk="", tail=""):
     w = max(len(k) for k, _ in rows) if rows else 0
     out = [head] + ([sub] if sub else []) + [LINE]
     out += [f"{k.ljust(w)}  {v}" for k, v in rows]
-    sz = size_line(rows, lev(head))
+    sz = size_line(rows)
     if sz: out += sz
     if sz and loss_streak() >= 3: out.append(f"🛑 {loss_streak()} losses in a row today: sit out till tomorrow. Not counted in the tally.")
     out.append(LINE)
@@ -81,8 +81,8 @@ def _first(v):
 
 
 def usd(pct, L=LEV):
-    """dollar result on $1 margin at 10x CROSS for a price move of pct % (cross: a loss can exceed the $1 margin)."""
-    return MARGIN * L * pct / 100
+    """2026-11-06: user sets own margin and leverage. Results are now the price move in %, before leverage (L ignored)."""
+    return pct
 
 
 def size_line(rows, L=LEV):
@@ -90,9 +90,7 @@ def size_line(rows, L=LEV):
     e, sl, t1 = _first(d.get("Entry")), _first(d.get("Stop")), _first(d.get("TP1"))
     if not e or not sl or not t1: return []
     sp, tp = abs(sl - e) / e * 100, abs(t1 - e) / e * 100
-    out = [f"💵 $1 @{L}x  stop −${MARGIN * L * sp / 100:.2f} · TP1 +${MARGIN * L * tp / 100:.2f}"]
-    if MARGIN * L * sp / 100 > MARGIN: out.append(f"⚠️ Stop {sp:.1f}% away: at {L}x cross it costs ${MARGIN * L * sp / 100:.2f}, more than your $1. Use ${100 / (L * sp):.2f} margin to keep the loss at $1.")
-    return out
+    return [f"📏 Stop −{sp:.1f}% · TP1 +{tp:.1f}% (price move)"]
 
 
 PNL = "state/pnl.json"
@@ -121,12 +119,12 @@ def loss_streak():
 
 def book(tr, usd_res, outcome):
     so = bool(tr.get("sitout"))
-    pnl.append({"sym": tr["sym"], "label": tr["label"], "t": int(time.time()), "usd": round(usd_res, 3), "res": outcome, "sitout": so})
+    pnl.append({"sym": tr["sym"], "label": tr["label"], "t": int(time.time()), "usd": round(usd_res, 3), "pct": round(usd_res, 3), "res": outcome, "sitout": so})
     json.dump(pnl, open(PNL, "w"))
-    td = _today()
-    if so: return f"🚫 Sit-out trade, not counted in today's total.\n📒 Today: {sum(1 for x in td if x['usd'] > 0)}W-{sum(1 for x in td if x['usd'] < 0)}L · {sum(x['usd'] for x in td):+.2f} USD"
+    td = [x for x in _today() if "pct" in x]
+    if so: return f"🚫 Sit-out trade, not counted in today's total.\n📒 Today: {sum(1 for x in td if x['usd'] > 0)}W-{sum(1 for x in td if x['usd'] < 0)}L · {sum(x['pct'] for x in td):+.2f}% price move"
     w = sum(1 for x in td if x["usd"] > 0); l = sum(1 for x in td if x["usd"] < 0)
-    return f"📒 Today ($1 margin, half off at TP1): {w}W-{l}L · {sum(x['usd'] for x in td):+.2f} USD"
+    return f"📒 Today (half off at TP1): {w}W-{l}L · {sum(x['pct'] for x in td):+.2f}% price move"
 
 
 def bar(p):
@@ -205,27 +203,27 @@ def check_trades():
             if (d == -1 and h >= stop) or (d == 1 and l <= stop):
                 if tr["tp1hit"]:
                     r_ = 0.5 * usd(pc(tr['tp1']), lev(tr['sym']))
-                    send(f"➖ {tr['sym']} · BREAKEVEN\n{tr['label']}\nBack to entry {tr['entry']} after TP1\n✅ TP1 profit kept · trade closed\n💵 {r_:+.2f} USD on $1 @{lev(tr['sym'])}x\n💲 Now {last}\n⏱ Trade time: {dur(ts)}\n" + book(tr, r_, "BE"))
+                    send(f"➖ {tr['sym']} · BREAKEVEN\n{tr['label']}\nBack to entry {tr['entry']} after TP1\n✅ TP1 profit kept · trade closed\n📈 {r_:+.2f}% price move\n💲 Now {last}\n⏱ Trade time: {dur(ts)}\n" + book(tr, r_, "BE"))
                 else:
                     r_ = usd(-pc(tr['sl']), lev(tr['sym']))
-                    send(f"❌ {tr['sym']} · STOP HIT\n{tr['label']}\n🔴 Stop {tr['sl']} (−{pc(tr['sl']):.1f}% before leverage)\nEntry was {tr['entry']} · trade closed\n💵 {r_:+.2f} USD on $1 @{lev(tr['sym'])}x\n💲 Now {last}\n⏱ Trade time: {dur(ts)}\n" + book(tr, r_, "SL"))
+                    send(f"❌ {tr['sym']} · STOP HIT\n{tr['label']}\n🔴 Stop {tr['sl']} (−{pc(tr['sl']):.1f}% before leverage)\nEntry was {tr['entry']} · trade closed\n📈 {r_:+.2f}% price move\n💲 Now {last}\n⏱ Trade time: {dur(ts)}\n" + book(tr, r_, "SL"))
                 done = True; break
             if not tr["tp1hit"] and ((d == -1 and l <= tr["tp1"]) or (d == 1 and h >= tr["tp1"])):
                 tr["tp1hit"] = True; stop = tr["entry"]
                 send(f"✅ {tr['sym']} · TP1 HIT\n{tr['label']}\n🟢 TP1 {tr['tp1']} (+{pc(tr['tp1']):.1f}% before leverage)\n👉 Take partial profit, move stop to entry {tr['entry']}\n🎯 Next: TP2 {tr['tp2']}\n💲 Now {last}\n⏱ Trade time: {dur(ts)}")
             if tr["tp1hit"] and ((d == -1 and l <= tr["tp2"]) or (d == 1 and h >= tr["tp2"])):
                 r_ = 0.5 * usd(pc(tr['tp1']), lev(tr['sym'])) + 0.5 * usd(pc(tr['tp2']), lev(tr['sym']))
-                send(f"🎯 {tr['sym']} · TP2 HIT\n{tr['label']}\n🟢 TP2 {tr['tp2']} (+{pc(tr['tp2']):.1f}% before leverage)\n🏁 Trade complete\n💵 {r_:+.2f} USD on $1 @{lev(tr['sym'])}x\n💲 Now {last}\n⏱ Trade time: {dur(ts)}\n" + book(tr, r_, "TP2"))
+                send(f"🎯 {tr['sym']} · TP2 HIT\n{tr['label']}\n🟢 TP2 {tr['tp2']} (+{pc(tr['tp2']):.1f}% before leverage)\n🏁 Trade complete\n📈 {r_:+.2f}% price move\n💲 Now {last}\n⏱ Trade time: {dur(ts)}\n" + book(tr, r_, "TP2"))
                 done = True; break
         if ks: tr["chk"] = min(ks[-1][0], time.time())
         if not done and tr.get("exp") and time.time() >= tr["exp"]:
             gain = (float(last) - tr["entry"]) / tr["entry"] * 100 * d if last != "?" else 0
             r_ = (0.5 * usd(pc(tr['tp1']), lev(tr['sym'])) + 0.5 * usd(gain, lev(tr['sym']))) if tr["tp1hit"] else usd(gain, lev(tr['sym']))
-            send(f"⏰ {tr['sym']} · TIME EXIT\n{tr['label']}\n👉 1 hour is up: close the trade now\n{'🟢' if gain >= 0 else '🔴'} {gain:+.2f}% before leverage (entry {tr['entry']})\n💵 {r_:+.2f} USD on $1 @{lev(tr['sym'])}x\n💲 Now {last}\n" + book(tr, r_, "TIME")); done = True
+            send(f"⏰ {tr['sym']} · TIME EXIT\n{tr['label']}\n👉 1 hour is up: close the trade now\n{'🟢' if gain >= 0 else '🔴'} {gain:+.2f}% before leverage (entry {tr['entry']})\n📈 {r_:+.2f}% price move\n💲 Now {last}\n" + book(tr, r_, "TIME")); done = True
         if not done and time.time() - tr["t"] > 48 * 3600:
             g2 = (float(last) - tr["entry"]) / tr["entry"] * 100 * d if last != "?" else 0
             r_ = (0.5 * usd(pc(tr['tp1']), lev(tr['sym'])) + 0.5 * usd(g2, lev(tr['sym']))) if tr["tp1hit"] else usd(g2, lev(tr['sym']))
-            send(f"⌛ {tr['sym']} · EXPIRED\n{tr['label']}\nNo TP2 or stop in 48h · stopped tracking\n💵 {r_:+.2f} USD on $1 @{lev(tr['sym'])}x if closed now\n💲 Now {last}\n" + book(tr, r_, "EXP")); done = True
+            send(f"⌛ {tr['sym']} · EXPIRED\n{tr['label']}\nNo TP2 or stop in 48h · stopped tracking\n📈 {r_:+.2f}% price move if closed now\n💲 Now {last}\n" + book(tr, r_, "EXP")); done = True
         if not done: keep.append(tr)
     trades[:] = keep
 
@@ -272,8 +270,8 @@ def setups():
             # 2026-11-05: autolv shorts OFF (90d backtest: shorts lost in every variant; longs +$18, positive both halves).
             # Shorts now come only from the gainers scanner. Short-side heads-ups/resets/momentum are muted too.
             if ev != "ALERT LONG DIP" and "fix" not in script: print("autolv short off", sym, ev); continue
-            if ev in ("ALERT REJECTION", "ALERT RETEST FAILED", "ALERT SETUP A", "ALERT SETUP B", "ALERT BREAKDOWN"):
-                name = {"ALERT REJECTION": "Auto, rejected at 4h high", "ALERT SETUP A": "Setup A, top failed",
+            if ev in ("ALERT REJECTION", "ALERT RETEST FAILED", "ALERT SETUP A", "ALERT SETUP B", "ALERT BREAKDOWN", "ALERT SETUP SHORT"):
+                name = {"ALERT REJECTION": "Auto, rejected at 4h high", "ALERT SETUP A": "Setup A, top failed", "ALERT SETUP SHORT": "Fixed setup, short",
                         "ALERT SETUP B": "Setup B, blow-off rejected", "ALERT RETEST FAILED": "Setup B, failed retest", "ALERT BREAKDOWN": "Setup B, 1h breakdown"}[ev]
                 if sym in ("Q", "AIN", "STRK") and ev in ("ALERT REJECTION", "ALERT SETUP A") and not allow(sym + ev, 2 if sym == "Q" else 3): continue
                 cand, plan = (body.split(" Short plan: ") + [""])[:2]
@@ -286,12 +284,12 @@ def setups():
                 send(card(f"🔴 SHORT · {sym}", f"📌 {name}",
                           [("🚪 Entry", raw(r"entry", plan)), ("🛑 Stop", raw(r"SL(?: above)?", plan)),
                            ("🎯 TP1", raw(r"TP1", plan)), ("🎯 TP2", raw(r"TP2", plan)), ("💲 Now", live)],
-                          why, f"{NOTE[sym]} 3-5x max, small size." + (" Price is below entry, wait for a bounce. Don't chase." if late else ""),
+                          why, NOTE.get(sym, "") + (" Price is below entry, wait for a bounce. Don't chase." if late else ""),
                           "🔔 I'll ping you at TP or stop."))
                 track(sym, name, plan.replace("SL above", "SL"))
-            elif ev == "ALERT LONG DIP":
-                name = "Auto, bounced off 4h low"
-                if not allow(sym + ev, 2): continue
+            elif ev in ("ALERT LONG DIP", "ALERT SETUP LONG"):
+                name = "Auto, bounced off 4h low" if ev == "ALERT LONG DIP" else "Fixed setup, long"
+                if ev == "ALERT LONG DIP" and not allow(sym + ev, 2): continue
                 cand, plan = (body.split(" Long plan: ") + [""])[:2]
                 e0 = num(r"entry", plan); late = False
                 if any(t["sym"] == sym and t["label"] == name for t in trades): print("dup long", sym); continue
@@ -301,7 +299,7 @@ def setups():
                 send(card(f"🟢 LONG · {sym}", f"📌 {name}",
                           [("🚪 Entry", raw(r"entry", plan)), ("🛑 Stop", raw(r"SL(?: below)?", plan)),
                            ("🎯 TP1", raw(r"TP1", plan)), ("🎯 TP2", raw(r"TP2", plan)), ("💲 Now", live)],
-                          why, f"{NOTE[sym]} 3x max, small size." + (" Price already bounced above entry, wait for a dip. Don't chase." if late else ""),
+                          why, NOTE.get(sym, "") + (" Price already bounced above entry, wait for a dip. Don't chase." if late else ""),
                           "🔔 I'll ping you at TP or stop."))
                 track(sym, name, plan.replace("SL below", "SL"), "LONG")
             elif ev == "ALERT BREAK":
@@ -329,7 +327,7 @@ def handle_signals(out):
       p = dict(re.findall(r"(entry|SL|TP1|TP2) (\S+)", plan))
       send(card(f"{'🟢 LONG' if up else '🔴 SHORT'} · {sym}", (f"📌 {'15m' if m15 else '1h'} RSI snap-back · {hhmm} WAT" if rk else f"📌 24h {'breakout' if up else 'breakdown'} · {hhmm} WAT"),
                 [("🚪 Entry", p['entry']), ("🛑 Stop", f"{p['SL']} ({risk}%)"), ("🎯 TP1", p['TP1']), ("🎯 TP2", p['TP2'])],
-                why, f"At 10x a stop costs ~{float(risk)*10:.0f}% of margin. " + ("Backtest 71% hit TP1 first (~14/month). Close most at TP1; stop is 1.5x TP1." if m15 else "Backtest 72% hit TP1 first. Close most at TP1; the stop is 2x wider than TP1." if rk else "NVDA backtest ~50% hit TP1 first, about breakeven: use your levels." if sym == "NVIDIA" else "Backtest ~54% hit TP1 first."),
+                why, ("Backtest 71% hit TP1 first (~14/month). Close most at TP1; stop is 1.5x TP1." if m15 else "Backtest 72% hit TP1 first. Close most at TP1; the stop is 2x wider than TP1." if rk else "NVDA backtest ~50% hit TP1 first, about breakeven: use your levels." if sym == "NVIDIA" else "Backtest ~54% hit TP1 first."),
                 "🔔 I'll ping you at TP or stop."))
       track(sym, f"{side.lower()} {'rsi snap-back' if rk else 'breakout'}", plan, side)
 
@@ -344,7 +342,7 @@ def handle_closerev(out):
                 [("📊 Last hour", f"{p['move']}% ({p['c15']} → {p['c16']})"), ("🚪 Entry", p['entry']), ("🛑 Stop", f"{p['SL']} (1%)"),
                  ("🎯 TP1", f"{p['TP1']} (1%)"), ("🎯 TP2", f"{p['TP2']} (1.5%)"), ("⏰ Exit", f"{p['exit']} WAT if no TP or stop")],
                 f"NVDA {'fell' if up else 'rose'} {p['move'].lstrip('+-')}% in the last hour before the US close; after the close it usually snaps back.",
-                "Futures only (MEXC event bets are closed now). Backtest 67% win over 11 months, avg +0.11% a trade before leverage. 3-5x max.",
+                "Futures only (MEXC event bets are closed now). Backtest 67% win over 11 months, avg +0.11% a trade before leverage.",
                 "🔔 I'll ping you at TP, stop, or the 1-hour exit."))
       track("NVIDIA", "post-close reversal", f"entry {p['entry']} SL {p['SL']} TP1 {p['TP1']} TP2 {p['TP2']}", side)
       for t in trades:
@@ -369,10 +367,10 @@ for l in run(["python3", "scripts/gainers.py"]).splitlines():
         played = float(live) <= tp1
         why = (f"Lower-high bounce failed under 24h high {g('high')}, closed {g('c')}. Riskier, trend can resume" if lh else
                f"Tagged 24h high {g('high')} and closed red at {g('c')}")
-        send(card(f"🔴 SHORT{' (fade)' if lh else ''} · {sym}", f"📌 {ch:+.1f}% in 24h · {t} WAT" + ("\n⚠️ HIGH RISK: fading a coin that's still pumping. Stops hit more often, use half size." if lh else ""),
+        send(card(f"🔴 SHORT{' (fade)' if lh else ''} · {sym}", f"📌 {ch:+.1f}% in 24h · {t} WAT" + ("\n⚠️ HIGH RISK: fading a coin that's still pumping. Stops hit more often." if lh else ""),
                   [("🚪 Entry", entry), ("🛑 Stop", g('stop')), ("🎯 TP1", g('tp1')), ("🎯 TP2", g('tp2')),
                    ("💲 Now", live), ("💸 Funding", f"{fund:+.3f}%")],
-                  why, "Wicks 20%+. 3-5x max, small size." + warn,
+                  why, "Wicks 20%+." + warn,
                   "⛔ Already past TP1, don't chase." if played else "🔔 I'll ping you at TP or stop."))
         if not played: track(sym, "fade short" if lh else "top short", f"entry {entry.split('-')[0]} SL {g('stop')} TP1 {g('tp1')} TP2 {g('tp2')}")
     except Exception as e:
