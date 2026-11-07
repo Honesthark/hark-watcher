@@ -406,7 +406,7 @@ for l in run(["python3", "scripts/news.py"], 60, 1).splitlines():
     if not l.startswith("NEWS "): continue
     try:
         head, pid, txt = l.split("\t", 2); tag = head[5:]
-        send(f"📰 NEWS · {tag} {NEWSICON.get(tag, '')}\n{LINE}\n{txt}\n🔗 https://t.me/WatcherGuru/{pid}\nHeadline only, not a signal. Watch the next 5–15m candle before acting.")
+        send(f"📰 NEWS · {tag} {NEWSICON.get(tag, '')}\n{LINE}\n{txt}\n🔗 https://t.me/{pid}\nHeadline only, not a signal. Watch the next 5–15m candle before acting.")
     except Exception as e: print("news", e, l)
 
 # ---- on-chain whale alerts ----
