@@ -248,6 +248,44 @@ def flip_close(sym, side, live, why):
     trades[:] = keep
 
 
+# 2026-11-07 (user): trades the user takes themselves. Hark writes state/manual.json
+# [{"sym","side","entry","sl","tp1","tp2","note"}]; the bot tracks each one like its own and pings TP/stop.
+MAN = "state/manual.json"
+if os.path.exists(MAN):
+    for m in json.load(open(MAN)):
+        sd = m.get("side", "SHORT").upper(); n0 = len(trades)
+        track(m["sym"], "Your trade" + (f", {m['note']}" if m.get("note") else ""), f"entry {m['entry']} SL {m['sl']} TP1 {m['tp1']} TP2 {m['tp2']}", sd)
+        if len(trades) > n0:
+            send(f"👀 {m['sym']} · TRACKING YOUR {sd}\n🚪 Entry {m['entry']}\n🛑 Stop {m['sl']}\n🎯 TP1 {m['tp1']} · TP2 {m['tp2']}\n🔔 I'll ping you at TP or stop.")
+        else:
+            send(f"⚠️ {m['sym']} · COULDN'T TRACK YOUR {sd}\nThe bot already has an open {sd.lower()} on {m['sym']}, and it follows that one instead.")
+    os.remove(MAN)
+
+# 2026-11-07 (user): fixed setups that never trigger but run to TP1 anyway send one "missed entry" alert.
+# script -> [(state flag that is True once the setup fired or was cancelled, side, TP1, setup name, entry zone)]
+MISS = {"scripts/ainfix.py": [("a", "SHORT", 0.112, "Setup A", "0.128-0.132"), ("b", "SHORT", 0.095, "Setup B", "0.103-0.105")],
+        "scripts/birbfix.py": [("a", "SHORT", 0.1055, "Setup A", "0.115-0.116"), ("b", "SHORT", 0.0975, "Setup B", "0.103-0.105")],
+        "scripts/akefix.py": [("done", "SHORT", 0.0041, "Fixed short", "0.0044-0.0045")],
+        "scripts/korfix.py": [("done", "SHORT", 0.0027, "Fixed short", "0.0029-0.00305")]}
+MS = "state/missed.json"
+missed = json.load(open(MS)) if os.path.exists(MS) else []
+
+
+def check_missed(sym, script, live):
+    for flag, side, tp1, name, zone in MISS.get(script, []):
+        key = f"{script}:{flag}"
+        if key in missed: continue
+        try:
+            stf = re.search(r'ST = "([^"]+)"', open(script.split()[0]).read()).group(1)
+            st = json.load(open(stf)); px = float(live)
+        except Exception: continue
+        if st.get(flag): continue
+        if (side == "SHORT" and px <= tp1) or (side == "LONG" and px >= tp1):
+            missed.append(key)
+            send(f"⏭ {sym} · MISSED ENTRY\n📌 {name} ({side.lower()})\nPrice never came back to the {zone} entry, and it's already past TP1 {tp1}\n💲 Now {live}\n👉 Don't chase it. The setup stays armed in case it does retest.")
+    json.dump(missed, open(MS, "w"))
+
+
 OB = "state/outbox.json"
 if os.path.exists(OB):
     for m in json.load(open(OB)): send(m)
@@ -265,6 +303,7 @@ def setups():
     for sym, script in WATCH:
         out = run(["python3"] + script.split())
         live = next((l.split()[1] for l in out.splitlines() if l.startswith("live ")), "?")
+        check_missed(sym, script, live)
         whale = []
         for l in out.splitlines():
             if l.startswith("BOARD ") and whale:
