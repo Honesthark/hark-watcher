@@ -400,6 +400,15 @@ for l in run(["python3", "scripts/gainers.py"]).splitlines():
     except Exception as e:
         print("gainer parse", e, l)
 
+# ---- breaking news (Watcher Guru feed, 2026-11-07) ----
+NEWSICON = {"NVDA": "🟩", "BTC/ETH": "🟠", "EXCHANGE": "🏦", "COINS": "🪙", "MACRO": "🏛"}
+for l in run(["python3", "scripts/news.py"], 60, 1).splitlines():
+    if not l.startswith("NEWS "): continue
+    try:
+        head, pid, txt = l.split("\t", 2); tag = head[5:]
+        send(f"📰 NEWS · {tag} {NEWSICON.get(tag, '')}\n{LINE}\n{txt}\n🔗 https://t.me/WatcherGuru/{pid}\nHeadline only, not a signal. Watch the next 5–15m candle before acting.")
+    except Exception as e: print("news", e, l)
+
 # ---- on-chain whale alerts ----
 moves = {}
 for l in run(["node", "scripts/onchain.mjs"], 120, 1).splitlines():
