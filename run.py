@@ -173,7 +173,7 @@ def num(pat, text):
 def track(sym, label, text, side="SHORT"):
     e, sl, t1, t2 = num(r"entry", text), num(r"(?:SL|stop)(?: above)?", text), num(r"TP1", text), num(r"TP2", text)
     if None in (e, sl, t1, t2): print("track skip", sym); return
-    if any(t["sym"] == sym and t["label"] == label and t["entry"] == e for t in trades): print("already tracking", sym); return
+    if any(t["sym"] == sym and t.get("side", "SHORT") == side for t in trades): print("already tracking", sym); return
     trades.append({"sym": sym, "label": label, "side": side, "entry": e, "sl": sl, "tp1": t1, "tp2": t2,
                    "t": time.time(), "chk": time.time(), "tp1hit": False, "sitout": loss_streak() >= 3})
 
@@ -280,7 +280,7 @@ def setups():
                 if sym in ("Q", "AIN", "STRK") and ev in ("ALERT REJECTION", "ALERT SETUP A") and not allow(sym + ev, 2 if sym == "Q" else 3): continue
                 cand, plan = (body.split(" Short plan: ") + [""])[:2]
                 e0 = num(r"entry", plan); late = ""
-                if any(t["sym"] == sym and t["label"] == name and t["entry"] == e0 for t in trades): print("dup signal", sym); continue
+                if any(t["sym"] == sym for t in trades): print("dup signal, open trade", sym); continue
                 try:
                     if e0 and float(live) < e0 * 0.98: late = " Price is already below entry, so wait for a bounce toward entry rather than chasing."
                 except Exception: pass
@@ -362,6 +362,7 @@ for l in run(["python3", "scripts/gainers.py"]).splitlines():
     lh = l.startswith("ALERT2")
     try:
         sym = l.split()[1].replace("_USDT", "")
+        if any(t["sym"] == sym for t in trades): print("skip gainer, open trade", sym); continue   # 2026-11-07: no stacking a 2nd/3rd short on a coin while one is still open (EVAA x3)
         g = lambda k: re.search(r"(?:^|[ |])" + k + r" ?([\-0-9.e+]+)", l).group(1)
         t = re.search(r"1h (\d\d:\d\d) WAT", l).group(1)
         ch = float(re.search(r"24h \+?(-?[0-9.]+)%", l).group(1))
