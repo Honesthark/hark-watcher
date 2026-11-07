@@ -3,7 +3,10 @@
 # Prints: NEWS <tag>\t<id>\t<text>
 import html, json, os, re, urllib.request
 ST = "state/news.json"
-SRC = ["WatcherGuru"]
+SRC = ["WatcherGuru", "cryptocurrency_media"]   # cryptocurrency_media added 2026-11-07: early but noisy, so stricter filter + cap
+NOISY = {"cryptocurrency_media": 4}   # max posts per run
+PROMO = r"i use|referral|ref link|promo|giveaway|sign ?up|bonus|vpn|airdrop for|join (our|my)|subscribe|link in|we use|keyboard|sponsored|\bad\b"
+NEWSY = r"just in|breaking|\b(says|said|reports?|announce[sd]?|approve[sd]?|ban(s|ned)?|files?|filed|launch(es|ed)?|buys?|bought|sells?|sold|dumps?|hack(ed)?|exploit|delist|suspend|halt|freez|froze|liquidat|cut|hike|raises?|rais|sanction|order(s|ed)?|sue[sd]?|charge[sd]?|arrest|close[sd]?|withdraw|outflow|inflow|etf)\b"
 TAGS = [
     ("NVDA", r"\bnvidia\b|\$?NVDA\b|jensen huang|\bH20\b|\bH200\b|\bblackwell\b|chip (sales|export)"),
     ("BTC/ETH", r"\bbitcoin\b|\$?BTC\b|\bethereum\b|\$?ETH\b|\bether\b|spot etf|microstrategy|\bsaylor\b|\bblackrock\b"),
@@ -13,6 +16,8 @@ TAGS = [
 ]
 st = json.load(open(ST)) if os.path.exists(ST) else {}
 out = []
+seen = st.get("seen", [])[-40:]
+found = {}
 for ch in SRC:
     try:
         s = urllib.request.urlopen(urllib.request.Request(f"https://t.me/s/{ch}", headers={"User-Agent": "Mozilla/5.0"}), timeout=20).read().decode("utf-8", "ignore")
@@ -26,7 +31,13 @@ for ch in SRC:
         txt = html.unescape(re.sub(r"<br\s*/?>", " ", raw)); txt = re.sub(r"<[^>]+>", "", txt)
         txt = re.sub(r"\s*@" + ch + r"\s*$", "", re.sub(r"\s+", " ", txt)).strip()
         tag = next((t for t, rx in TAGS if re.search(rx, txt, re.I)), None)
-        if tag: out.append(f"NEWS {tag}\t{pid}\t{txt}")
+        if not tag: continue
+        if ch in NOISY and (re.search(PROMO, txt, re.I) or not re.search(NEWSY, txt, re.I) or len(txt) < 35): continue
+        key = set(re.findall(r"[a-z0-9$]{4,}", txt.lower()))
+        if any(len(key & set(k)) >= 0.6 * max(1, min(len(key), len(k))) for k in seen): continue   # same story already sent from another channel
+        seen.append(sorted(key)); found.setdefault(ch, []).append(f"NEWS {tag}\t{ch}/{pid}\t{txt[:400]}")
     if posts: st[ch] = max([int(p) for p, _ in posts] + [last or 0])
+for ch in SRC: out += found.get(ch, [])[-NOISY.get(ch, 6):]
+st["seen"] = seen[-40:]
 json.dump(st, open(ST, "w"))
-print("\n".join(out[-6:]))
+print("\n".join(out[-8:]))
