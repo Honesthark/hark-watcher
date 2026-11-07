@@ -232,6 +232,22 @@ def check_trades():
     trades[:] = keep
 
 
+def flip_close(sym, side, live, why):
+    """2026-11-07 (user): a new setup the other way on a coin closes the open opposite trade. Ping to close it, book it at the current price."""
+    keep = []
+    for tr in trades:
+        if tr["sym"] != sym or tr.get("side", "SHORT") == side: keep.append(tr); continue
+        d = -1 if tr.get("side", "SHORT") == "SHORT" else 1
+        try: px = float(live)
+        except Exception: keep.append(tr); continue
+        gain = (px - tr["entry"]) / tr["entry"] * 100 * d
+        t1 = abs(tr["tp1"] - tr["entry"]) / tr["entry"] * 100
+        r_ = 0.5 * t1 + 0.5 * gain if tr["tp1hit"] else gain
+        m = max(1, int((time.time() - tr["t"]) // 60)); du = f"{m} mins" if m < 60 else f"{m // 60}h {m % 60}m"
+        send(f"🔁 {sym} · CLOSE YOUR {tr.get('side', 'SHORT')}\n{tr['label']}\n👉 A {side} setup just fired ({why}), so close the {tr.get('side', 'SHORT').lower()} now\n🚪 Close at ~{live} (entry {tr['entry']})\n{'🟢' if gain >= 0 else '🔴'} {gain:+.2f}% before leverage\n📈 {r_:+.2f}% price move\n⏱ Trade time: {du}\n" + book(tr, r_, "FLIP"))
+    trades[:] = keep
+
+
 OB = "state/outbox.json"
 if os.path.exists(OB):
     for m in json.load(open(OB)): send(m)
@@ -280,7 +296,8 @@ def setups():
                 if sym in ("Q", "AIN", "STRK") and ev in ("ALERT REJECTION", "ALERT SETUP A") and not allow(sym + ev, 2 if sym == "Q" else 3): continue
                 cand, plan = (body.split(" Short plan: ") + [""])[:2]
                 e0 = num(r"entry", plan); late = ""
-                if any(t["sym"] == sym for t in trades): print("dup signal, open trade", sym); continue
+                if any(t["sym"] == sym and t.get("side", "SHORT") == "SHORT" for t in trades): print("dup signal, open short", sym); continue
+                flip_close(sym, "SHORT", live, name)
                 try:
                     if e0 and float(live) < e0 * 0.98: late = " Price is already below entry, so wait for a bounce toward entry rather than chasing."
                 except Exception: pass
@@ -296,7 +313,8 @@ def setups():
                 if ev == "ALERT LONG DIP" and not allow(sym + ev, 2): continue
                 cand, plan = (body.split(" Long plan: ") + [""])[:2]
                 e0 = num(r"entry", plan); late = False
-                if any(t["sym"] == sym and t["label"] == name for t in trades): print("dup long", sym); continue
+                if any(t["sym"] == sym and t.get("side") == "LONG" for t in trades): print("dup long, open long", sym); continue
+                flip_close(sym, "LONG", live, name)
                 try: late = bool(e0 and float(live) > e0 * 1.02)
                 except Exception: pass
                 why = re.sub(r"\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d\d:\d\d-\d\d:\d\d WAT", "", cand).strip().rstrip(".")
@@ -323,8 +341,9 @@ def handle_signals(out):
       m = re.match(r"SIGNAL (\w+) (LONG|SHORT) close (\S+) level (\S+) at (\S+) (.*) risk (\S+)", l)
       if not m: continue
       sym, side, cl, lvl, hhmm, plan, risk = m.groups()
-      if any(t["sym"] == sym for t in trades): print("skip, open trade", sym); continue
+      if any(t["sym"] == sym and t.get("side", "SHORT") == side for t in trades): print("skip, open trade same side", sym); continue
       up = side == "LONG"
+      flip_close(sym, side, cl, "breakout" if " rsi" not in l else "RSI snap-back")
       rk = re.search(r"kind rsi(\d*) (\d+)", l); m15 = bool(rk and rk.group(1))
       why = (f"1h close {cl} broke above the 24h high {lvl}, trend up" if up else f"1h close {cl} broke below the 24h low {lvl}, trend down")
       if rk: why = (f"{'15m ' if m15 else '1h '}RSI {rk.group(2)}: oversold dip inside an uptrend, snap-back long" if up else f"{'15m ' if m15 else '1h '}RSI {rk.group(2)}: overbought pop inside a downtrend, snap-back short")
@@ -362,7 +381,7 @@ for l in run(["python3", "scripts/gainers.py"]).splitlines():
     lh = l.startswith("ALERT2")
     try:
         sym = l.split()[1].replace("_USDT", "")
-        if any(t["sym"] == sym for t in trades): print("skip gainer, open trade", sym); continue   # 2026-11-07: no stacking a 2nd/3rd short on a coin while one is still open (EVAA x3)
+        if any(t["sym"] == sym and t.get("side", "SHORT") == "SHORT" for t in trades): print("skip gainer, open short", sym); continue   # 2026-11-07: no stacking a 2nd/3rd short on a coin while one is still open (EVAA x3)
         g = lambda k: re.search(r"(?:^|[ |])" + k + r" ?([\-0-9.e+]+)", l).group(1)
         t = re.search(r"1h (\d\d:\d\d) WAT", l).group(1)
         ch = float(re.search(r"24h \+?(-?[0-9.]+)%", l).group(1))
@@ -377,7 +396,7 @@ for l in run(["python3", "scripts/gainers.py"]).splitlines():
                    ("💲 Now", live), ("💸 Funding", f"{fund:+.3f}%")],
                   why, "Wicks 20%+." + warn,
                   "⛔ Already past TP1, don't chase." if played else "🔔 I'll ping you at TP or stop."))
-        if not played: track(sym, "fade short" if lh else "top short", f"entry {entry.split('-')[0]} SL {g('stop')} TP1 {g('tp1')} TP2 {g('tp2')}")
+        if not played: flip_close(sym, "SHORT", live, "gainer short"); track(sym, "fade short" if lh else "top short", f"entry {entry.split('-')[0]} SL {g('stop')} TP1 {g('tp1')} TP2 {g('tp2')}")
     except Exception as e:
         print("gainer parse", e, l)
 
