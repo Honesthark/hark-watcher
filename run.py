@@ -299,7 +299,7 @@ check_trades()
 # All setup levels follow price (scripts/autolv.py, 2026-11-04). auto.py SYM = levels only; ake/btw/strk add their extras.
 WATCH = [("AIN", "scripts/auto.py AIN"), ("Q", "scripts/auto.py Q"), ("BTW", "scripts/btw.py"), ("IRYS", "scripts/auto.py IRYS"),
          ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("AKE", "scripts/akefix.py"), ("AIN", "scripts/ainfix.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"), ("BIRB", "scripts/auto.py BIRB"), ("BIRB", "scripts/birbfix.py"), ("UAI", "scripts/uaifix.py"), ("KOR", "scripts/korfix.py"), ("CLAUDIA", "scripts/claudiafix.py"), ("NVIDIA", "scripts/nvdafix.py"),
-         ("AIN", "scripts/wallet.py AIN"), ("BTW", "scripts/wallet.py BTW"), ("UAI", "scripts/wallet.py UAI")]  # whale-wallet watches added 2026-11-05
+         ("AIN", "scripts/wallet.py AIN"), ("BTW", "scripts/wallet.py BTW"), ("UAI", "scripts/wallet.py UAI"), ("JCT", "scripts/wallet.py JCT")]  # whale-wallet watches added 2026-11-05
 def setups():
     for sym, script in WATCH:
         out = run(["python3"] + script.split())
@@ -321,8 +321,8 @@ def setups():
                           [("💰 Moved", f"{fmt(amt)} {sym} (~${float(usd):,.0f})"), ("👛 Left", fmt(left) + (f" ({pct:.0f}% of start)" if pct is not None else "")),
                            *([("📦 13 wallets", f"{float(tot)/1e9:.2f}B ({float(tot)/1e9:.1f}% supply)")] if sym == "AKE" else []), ("💲 Now", live),
                            ("📈 24h", f"{chg}%"), ("💸 Funding", f"{fr}%" + (" 🔥 crowded shorts" if fr != "na" and float(fr) < -0.1 else ""))],
-                          risk="More supply can hit the market. Watch the short setups." if sell else ("Wallet refilled: it sent 30M to Bybit on Nov 4, so another deposit may follow." if sym == "STRK" else ""),
-                          tail=f"🔗 https://{'etherscan.io' if sym == 'STRK' else 'bscscan.com'}/address/{w}"))
+                          risk=("🔓 A JCT unlock wallet moved: vesting has started. Watch for exchange deposits." if sym == "JCT" else "More supply can hit the market. Watch the short setups.") if sell else ("Wallet refilled: it sent 30M to Bybit on Nov 4, so another deposit may follow." if sym == "STRK" else ""),
+                          tail=f"🔗 https://{'etherscan.io' if sym in ('STRK', 'JCT') else 'bscscan.com'}/address/{w}"))
                 continue
             m = re.match(r"(ALERT [A-Z ]+|MOMENTUM|INVALID):\s*(.*)", l)
             if not m: continue
