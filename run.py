@@ -266,7 +266,8 @@ if os.path.exists(MAN):
 MISS = {"scripts/ainfix.py": [("a", "SHORT", 0.112, "Setup A", "0.128-0.132"), ("b", "SHORT", 0.095, "Setup B", "0.103-0.105")],
         "scripts/birbfix.py": [("a", "SHORT", 0.1055, "Setup A", "0.115-0.116"), ("b", "SHORT", 0.0975, "Setup B", "0.103-0.105")],
         "scripts/akefix.py": [("done", "SHORT", 0.0041, "Fixed short", "0.0044-0.0045")],
-        "scripts/korfix.py": [("done", "SHORT", 0.0027, "Fixed short", "0.0029-0.00305")]}
+        "scripts/korfix.py": [("done", "SHORT", 0.0027, "Fixed short", "0.0029-0.00305")],
+        "scripts/claudiafix.py": [("b", "SHORT", 0.0060, "Breakdown short", "0.0068-0.0069")]}
 MS = "state/missed.json"
 missed = json.load(open(MS)) if os.path.exists(MS) else []
 
@@ -297,7 +298,7 @@ check_trades()
 # ---- setup watchers ----
 # All setup levels follow price (scripts/autolv.py, 2026-11-04). auto.py SYM = levels only; ake/btw/strk add their extras.
 WATCH = [("AIN", "scripts/auto.py AIN"), ("Q", "scripts/auto.py Q"), ("BTW", "scripts/btw.py"), ("IRYS", "scripts/auto.py IRYS"),
-         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("AKE", "scripts/akefix.py"), ("AIN", "scripts/ainfix.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"), ("BIRB", "scripts/auto.py BIRB"), ("BIRB", "scripts/birbfix.py"), ("UAI", "scripts/uaifix.py"), ("KOR", "scripts/korfix.py"), ("NVIDIA", "scripts/nvdafix.py"),
+         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("AKE", "scripts/akefix.py"), ("AIN", "scripts/ainfix.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"), ("BIRB", "scripts/auto.py BIRB"), ("BIRB", "scripts/birbfix.py"), ("UAI", "scripts/uaifix.py"), ("KOR", "scripts/korfix.py"), ("CLAUDIA", "scripts/claudiafix.py"), ("NVIDIA", "scripts/nvdafix.py"),
          ("AIN", "scripts/wallet.py AIN"), ("BTW", "scripts/wallet.py BTW")]  # whale-wallet watches added 2026-11-05
 def setups():
     for sym, script in WATCH:
