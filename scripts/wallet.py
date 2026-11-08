@@ -4,7 +4,9 @@
 import json,urllib.request,os,sys
 SYM=sys.argv[1]; ST=f"state/wallet_{SYM.lower()}.json"; UA={"User-Agent":"Mozilla/5.0"}
 CFG={"AIN":("0x9558a9254890B2A8B057a789F413631B9084f4a3",1e6,{"0x8047a4b87d07a4fc844bf27f3955c90989673963":40018678}),
-     "BTW":("0x444045B0EE1ee319A660a5E3d604CA0ffA35ACaA",1e6,{"0x543714F349970cD3b02d6Dc6A85ac8641f2BB3A3":197417759})}
+     "BTW":("0x444045B0EE1ee319A660a5E3d604CA0ffA35ACaA",1e6,{"0x543714F349970cD3b02d6Dc6A85ac8641f2BB3A3":197417759}),
+     # UAI added 2026-11-08 10:05 WAT: Gnosis Safe 0xc79b...99c7 (95.3M left) sent 20M to 0x87b2...B7E5, which is splitting 150K chunks to fresh wallets (16.94M left).
+     "UAI":("0x3e5d4f8aee0d9b3082d5f6da5d6e225d17ba9ea0",1e6,{"0x87b2b9d6b3c449ea4d03bef6d45b40ca8644b7e5":20000000,"0xc79b88ca005dff2adf31a3c191a0504a5eda99c7":115282658})}
 TOKEN,MIN,START=CFG[SYM]
 RPCS=["https://bsc-dataseed.bnbchain.org","https://bsc-dataseed1.defibit.io","https://bsc-rpc.publicnode.com"]
 def bal(w):
