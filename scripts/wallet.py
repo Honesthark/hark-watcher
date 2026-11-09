@@ -6,7 +6,9 @@ SYM=sys.argv[1]; ST=f"state/wallet_{SYM.lower()}.json"; UA={"User-Agent":"Mozill
 CFG={"AIN":("0x9558a9254890B2A8B057a789F413631B9084f4a3",1e6,{"0x8047a4b87d07a4fc844bf27f3955c90989673963":40018678}),
      "BTW":("0x444045B0EE1ee319A660a5E3d604CA0ffA35ACaA",1e6,{"0x543714F349970cD3b02d6Dc6A85ac8641f2BB3A3":197417759}),
      # UAI added 2026-11-08 10:05 WAT: Gnosis Safe 0xc79b...99c7 (95.3M left) sent 20M to 0x87b2...B7E5, which is splitting 150K chunks to fresh wallets (16.94M left).
-     "UAI":("0x3e5d4f8aee0d9b3082d5f6da5d6e225d17ba9ea0",1e6,{"0x87b2b9d6b3c449ea4d03bef6d45b40ca8644b7e5":20000000,"0xc79b88ca005dff2adf31a3c191a0504a5eda99c7":115282658}),
+     "UAI":("0x3e5d4f8aee0d9b3082d5f6da5d6e225d17ba9ea0",1e6,{"0x87b2b9d6b3c449ea4d03bef6d45b40ca8644b7e5":20000000,"0xc79b88ca005dff2adf31a3c191a0504a5eda99c7":115282658,
+            # 2026-11-09 11:10 WAT (user asked): fresh wallet got 25M UAI from Gnosis Safe 0xAf3... at 10:06 UTC.
+            "0xc1888ffccfbaef1035ee48c693df40f18cb0b7c6":25000015}),
      # JCT added 2026-11-08 13:30 WAT: Janction's five locked-allocation Safes on Ethereum, untouched since TGE 2025-11-10. Cliff ends ~2026-11-10 (calendars) or 2026-12-10 (docs).
      "JCT":("0xC477B6dfd26EC2460b3b92de18837Fd476Ea7549",20e6,{"0xa68f0255c0eeb35e3cf558d58cfbbfa8811b9b84":13145625000,"0x246d024c6816efaae060235d5695a8af31e3d562":10670000000,
             "0x250371ff899cbac4ef5156e6a3f4982a6cf10e2e":9000000000,"0xe906efef04fae94d784eaf702278657ef924a050":5000000000,"0xa13918f90296072fc15409fced346c8a423ddf86":1834375000})}
