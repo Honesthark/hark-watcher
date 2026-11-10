@@ -38,6 +38,28 @@ for ch in SRC:
         seen.append(sorted(key)); found.setdefault(ch, []).append(f"NEWS {tag}\t{ch}/{pid}\t{txt[:400]}")
     if posts: st[ch] = max([int(p) for p, _ in posts] + [last or 0])
 for ch in SRC: out += found.get(ch, [])[-NOISY.get(ch, 6):]
+
+# ---- Jensen Huang probe headlines (Google News RSS, added 2026-11-10 at user request; replaces a Hark scheduled check). Expires after Nov 18 (post-earnings).
+import time as _t
+if _t.time() < 1795039200:
+    GQ = "https://news.google.com/rss/search?q=%22Jensen+Huang%22+(investigation+OR+FBI+OR+probe+OR+board+OR+resign+OR+lawsuit+OR+Congress+OR+Commerce)&hl=en-US&gl=US&ceid=US:en"
+    BIG = r"resign|step(s|ped)? down|steps aside|on leave|ouster|oust|replace|interim ceo|successor|fired|FBI|DOJ|Justice Department|\bSEC\b|subpoena|charge[sd]?|indict|arrest|congress|senate|house (panel|committee)|hearing|lawmakers|board (find|conclu|clear)|findings|cleared|export|commerce (dept|department)|lawsuit|sued|class action|megaspeed|earnings|guidance|delay"
+    try:
+        g = urllib.request.urlopen(urllib.request.Request(GQ, headers={"User-Agent": "Mozilla/5.0"}), timeout=20).read().decode("utf-8", "ignore")
+        items = re.findall(r"<item><title>(.*?)</title><link>(.*?)</link>", g)
+        gs = st.get("gnews")
+        new = []
+        for t, l in items:
+            t = html.unescape(t)
+            k = re.sub(r"\s+-\s+[^-]+$", "", t).lower()[:90]
+            if gs is not None and k not in gs and re.search(BIG, t, re.I):
+                key = set(re.findall(r"[a-z0-9$]{4,}", t.lower()))
+                if not any(len(key & set(x)) >= 0.6 * max(1, min(len(key), len(x))) for x in seen):
+                    seen.append(sorted(key)); new.append(f"NEWS NVDA\t{html.unescape(l)}\t{t[:300]}")
+        st["gnews"] = list(dict.fromkeys((gs or []) + [re.sub(r"\s+-\s+[^-]+$", "", html.unescape(t)).lower()[:90] for t, _ in items]))[-200:]
+        out += new[:3]
+    except Exception as e:
+        print("gnews fail", e)
 st["seen"] = seen[-40:]
 json.dump(st, open(ST, "w"))
 print("\n".join(out[-8:]))
