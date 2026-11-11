@@ -11,8 +11,12 @@ CFG={"AIN":("0x9558a9254890B2A8B057a789F413631B9084f4a3",1e6,{"0x8047a4b87d07a4f
             "0xc1888ffccfbaef1035ee48c693df40f18cb0b7c6":25000015}),
      # JCT added 2026-11-08 13:30 WAT: Janction's five locked-allocation Safes on Ethereum, untouched since TGE 2025-11-10. Cliff ends ~2026-11-10 (calendars) or 2026-12-10 (docs).
      "JCT":("0xC477B6dfd26EC2460b3b92de18837Fd476Ea7549",20e6,{"0xa68f0255c0eeb35e3cf558d58cfbbfa8811b9b84":13145625000,"0x246d024c6816efaae060235d5695a8af31e3d562":10670000000,
-            "0x250371ff899cbac4ef5156e6a3f4982a6cf10e2e":9000000000,"0xe906efef04fae94d784eaf702278657ef924a050":5000000000,"0xa13918f90296072fc15409fced346c8a423ddf86":1834375000})}
-ETH={"JCT"}
+            "0x250371ff899cbac4ef5156e6a3f4982a6cf10e2e":9000000000,"0xe906efef04fae94d784eaf702278657ef924a050":5000000000,"0xa13918f90296072fc15409fced346c8a423ddf86":1834375000}),
+     # H (Humanity) added 2026-11-11 21:56 WAT (user asked): four never-used wallets got ~211.7M H at 21:24 WAT Nov 11 from four senders, 0 ETH for gas.
+     "H":("0xe76c5b78f93909d34404e9eb4c1f19e7582a5de1",1e6,{"0x3829da7ea774e57a5332b02480c79f93d9ef13a0":41028838,"0x3a0ba545eabbd2e90061717a04547f462c2f2d8e":45163742,
+            "0x4bfa4ea5cfcdd218accbd77153150c357a988a15":53000108,"0xa7fc20a7aee71da0f8ebbbcc2924500db477a7a5":72518912})}
+ETH={"JCT","H"}
+GASWATCH={"H"}  # ping once when a watched wallet first receives ETH for gas
 TOKEN,MIN,START=CFG[SYM]
 RPCS=(["https://ethereum-rpc.publicnode.com","https://eth.llamarpc.com","https://rpc.ankr.com/eth"] if SYM in ETH else
       ["https://bsc-dataseed.bnbchain.org","https://bsc-dataseed1.defibit.io","https://bsc-rpc.publicnode.com"])
@@ -35,5 +39,15 @@ for w in START:
     dlt=b-old
     if abs(dlt)>=MIN:
         print(f"WHALE {'SELL' if dlt<0 else 'BUY'} {w} {abs(dlt):.0f} {b:.0f} {abs(dlt)*live:.0f} {sum(s.values()):.0f} {ind} {START[w]}")
+if SYM in GASWATCH:
+    for w in START:
+        body=json.dumps({"jsonrpc":"2.0","id":1,"method":"eth_getBalance","params":[w,"latest"]}).encode()
+        g=None
+        for r in RPCS:
+            try: g=int(json.load(urllib.request.urlopen(urllib.request.Request(r,body,{"Content-Type":"application/json",**UA}),timeout=15))["result"],16)/1e18; break
+            except Exception: continue
+        if g is None: continue
+        k="gas:"+w; old=s.get(k); s[k]=g
+        if old is not None and old<=0 and g>0: print(f"GAS {w} {g:.5f}")
 json.dump(s,open(ST,"w"))
 print("live",live)
