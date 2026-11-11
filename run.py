@@ -302,7 +302,7 @@ check_trades()
 # All setup levels follow price (scripts/autolv.py, 2026-11-04). auto.py SYM = levels only; ake/btw/strk add their extras.
 WATCH = [("AIN", "scripts/auto.py AIN"), ("Q", "scripts/auto.py Q"), ("BTW", "scripts/btw.py"), ("IRYS", "scripts/auto.py IRYS"),
          ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("AKE", "scripts/akefix.py"), ("AIN", "scripts/ainfix.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"), ("BIRB", "scripts/auto.py BIRB"), ("BIRB", "scripts/birbfix.py"), ("UAI", "scripts/uaifix.py"), ("KOR", "scripts/korfix.py"), ("CLAUDIA", "scripts/claudiafix.py"), ("KOR", "scripts/korfix2.py"), ("JCT", "scripts/jctfix.py"), ("KOR", "scripts/korfix3.py"), ("NVIDIA", "scripts/nvdafix.py"),
-         ("AIN", "scripts/wallet.py AIN"), ("BTW", "scripts/wallet.py BTW"), ("UAI", "scripts/wallet.py UAI"), ("JCT", "scripts/wallet.py JCT")]  # whale-wallet watches added 2026-11-05
+         ("AIN", "scripts/wallet.py AIN"), ("BTW", "scripts/wallet.py BTW"), ("UAI", "scripts/wallet.py UAI"), ("JCT", "scripts/wallet.py JCT"), ("H", "scripts/wallet.py H")]  # whale-wallet watches added 2026-11-05
 def setups():
     for sym, script in WATCH:
         out = run(["python3"] + script.split())
@@ -313,6 +313,9 @@ def setups():
             if l.startswith("BOARD ") and whale:
                 whale[-1] += "\n\n" + board(sym, json.loads(l[6:])); continue
             if l.startswith("live") or l.startswith("BOARD "): continue
+            if l.startswith("GAS "):  # 2026-11-11: gas-funding warning for never-used holder wallets
+                _, gw, ge = l.split()[:3]
+                send(f"⛽ {sym} · WALLET GOT GAS\n👛 {gw[:6]}…{gw[-4:]} just received {ge} ETH\nIt holds a big {sym} bag and couldn't move it before. A transfer or exchange deposit may follow.\n💲 Now {live}\n🔗 https://etherscan.io/address/{gw}"); continue
             if l.startswith("WHALE "):
                 parts = l.split(); _, kind, w, amt, left, usd, tot = parts[:7]
                 chg, fr, st0 = (parts[7:10] + ["na", "na", "0"])[:3]
@@ -325,7 +328,7 @@ def setups():
                            *([("📦 13 wallets", f"{float(tot)/1e9:.2f}B ({float(tot)/1e9:.1f}% supply)")] if sym == "AKE" else []), ("💲 Now", live),
                            ("📈 24h", f"{chg}%"), ("💸 Funding", f"{fr}%" + (" 🔥 crowded shorts" if fr != "na" and float(fr) < -0.1 else ""))],
                           risk=("🔓 A JCT unlock wallet moved: vesting has started. Watch for exchange deposits." if sym == "JCT" else "More supply can hit the market. Watch the short setups.") if sell else ("Wallet refilled: it sent 30M to Bybit on Nov 4, so another deposit may follow." if sym == "STRK" else ""),
-                          tail=f"🔗 https://{'etherscan.io' if sym in ('STRK', 'JCT') else 'bscscan.com'}/address/{w}"))
+                          tail=f"🔗 https://{'etherscan.io' if sym in ('STRK', 'JCT', 'H') else 'bscscan.com'}/address/{w}"))
                 continue
             m = re.match(r"(ALERT [A-Z ]+|MOMENTUM|INVALID):\s*(.*)", l)
             if not m: continue
