@@ -502,10 +502,16 @@ json.dump(trades, open(TR, "w"))
 if not DRY:
     end = time.time() + 50 * 60
     last_setup = time.time()
+    last_major = time.time()
     hard = time.time() + 70 * 60   # job timeout is 75 min
     while time.time() < end or any(t.get("exp") and t["exp"] + 120 > time.time() for t in trades) and time.time() < hard:
         time.sleep(60)
         handle_signals(run(["python3", "scripts/nvda15.py"], 60, 1))
+        # 2026-11-11 (user): 1h breakout signals arrived ~45 min late because majors.py only ran at job start. Now checked right after each 1h close.
+        if time.time() // 3600 != last_major // 3600 and time.time() % 3600 > 45:
+            last_major = time.time()
+            try: handle_signals(run(["python3", "scripts/majors.py"], 60, 1))
+            except Exception as e: print("majors err", e)
         handle_closerev(run(["python3", "scripts/nvdaclose.py"], 60, 1))
         if time.time() // 900 != last_setup // 900 and time.time() % 900 > 45:  # once per 15m candle, just after it closes
             last_setup = time.time()
