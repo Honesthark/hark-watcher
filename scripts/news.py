@@ -8,7 +8,7 @@ NOISY = {"cryptocurrency_media": 4}   # max posts per run
 PROMO = r"i use|referral|ref link|promo|giveaway|sign ?up|bonus|vpn|airdrop for|join (our|my)|subscribe|link in|we use|keyboard|sponsored|\bad\b"
 NEWSY = r"just in|breaking|\b(says|said|reports?|announce[sd]?|approve[sd]?|ban(s|ned)?|files?|filed|launch(es|ed)?|buys?|bought|sells?|sold|dumps?|hack(ed)?|exploit|delist|suspend|halt|freez|froze|liquidat|cut|hike|raises?|rais|sanction|order(s|ed)?|sue[sd]?|charge[sd]?|arrest|close[sd]?|withdraw|outflow|inflow|etf)\b"
 TAGS = [
-    ("NVDA", r"\bnvidia\b|\$?NVDA\b|jensen huang|\bH20\b|\bH200\b|\bblackwell\b|chip (sales|export)"),
+    ("NVDA", r"\bnvidia\b|\$?NVDA\b|jensen huang|\bH20\b|\bH200\b|\bblackwell\b|chip (sales|export)|trump.{0,20}\bxi\b|\bxi\b.{0,20}trump|xi jinping|\bAPEC\b|export (curb|control|ban|restriction|rule)s?|chip (curb|ban|restriction|control)s?|tech(nology)? (curb|restriction|blockade|ban)s?|entity list|\bBIS\b"),  # Trump-Xi + tech curbs added 2026-11-12
     ("BTC/ETH", r"\bbitcoin\b|\$?BTC\b|\bethereum\b|\$?ETH\b|\bether\b|spot etf|microstrategy|\bsaylor\b|\bblackrock\b"),
     ("EXCHANGE", r"\bMEXC\b|\bbinance\b|\bbybit\b|\bbitget\b|\bcoinbase\b|\bhack(ed)?\b|\bexploit|\bdelist"),
     ("COINS", r"\$(AIN|BTW|IRYS|EVAA|AKE|STRK|CLANKER|KOR|BIRB|UAI|TRUMP|HOT|ELSA)\b"),
@@ -43,7 +43,7 @@ for ch in SRC: out += found.get(ch, [])[-NOISY.get(ch, 6):]
 import time as _t
 if _t.time() < 1795039200:
     GQ = "https://news.google.com/rss/search?q=%22Jensen+Huang%22+(investigation+OR+FBI+OR+probe+OR+board+OR+resign+OR+lawsuit+OR+Congress+OR+Commerce)&hl=en-US&gl=US&ceid=US:en"
-    BIG = r"resign|step(s|ped)? down|steps aside|on leave|ouster|oust|replace|interim ceo|successor|fired|FBI|DOJ|Justice Department|\bSEC\b|subpoena|charge[sd]?|indict|arrest|congress|senate|house (panel|committee)|hearing|lawmakers|board (find|conclu|clear)|findings|cleared|export|commerce (dept|department)|lawsuit|sued|class action|megaspeed|earnings|guidance|delay"
+    BIG = r"resign|step(s|ped)? down|steps aside|on leave|ouster|oust|replace|interim ceo|successor|fired|FBI|DOJ|Justice Department|\bSEC\b|subpoena|charge[sd]?|indict|arrest|congress|senate|house (panel|committee)|hearing|lawmakers|board (find|conclu|clear)|findings|cleared|export|commerce (dept|department)|lawsuit|sued|class action|megaspeed|earnings|guidance|delay|curb|restriction|blockade|chip ban|trump|\bxi\b|apec"
     try:
         g = urllib.request.urlopen(urllib.request.Request(GQ, headers={"User-Agent": "Mozilla/5.0"}), timeout=20).read().decode("utf-8", "ignore")
         items = re.findall(r"<item><title>(.*?)</title><link>(.*?)</link>", g)
