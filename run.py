@@ -271,7 +271,8 @@ MISS = {"scripts/ainfix.py": [("a", "SHORT", 0.112, "Setup A", "0.128-0.132"), (
         "scripts/korfix2.py": [("done", "SHORT", 0.00090, "Breakdown short", "0.00097-0.000985")],
         "scripts/jctfix.py": [("done", "SHORT", 0.0130, "Squeeze-fade short", "0.0145-0.0150")],
         "scripts/korfix3.py": [("b", "SHORT", 0.00110, "Breakdown short", "0.00121-0.00123")],
-        "scripts/mstrfix.py": [("a", "SHORT", 120, "Rejection short", "124-125")]}
+        "scripts/mstrfix.py": [("a", "SHORT", 120, "Rejection short", "124-125")],
+        "scripts/jctfix2.py": [("a", "SHORT", 0.0042, "Rejection short", "0.0047-0.0049")]}
 MS = "state/missed.json"
 missed = json.load(open(MS)) if os.path.exists(MS) else []
 
@@ -302,7 +303,7 @@ check_trades()
 # ---- setup watchers ----
 # All setup levels follow price (scripts/autolv.py, 2026-11-04). auto.py SYM = levels only; ake/btw/strk add their extras.
 WATCH = [("AIN", "scripts/auto.py AIN"), ("Q", "scripts/auto.py Q"), ("BTW", "scripts/btw.py"), ("IRYS", "scripts/auto.py IRYS"),
-         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("AKE", "scripts/akefix.py"), ("AIN", "scripts/ainfix.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"), ("BIRB", "scripts/auto.py BIRB"), ("BIRB", "scripts/birbfix.py"), ("UAI", "scripts/uaifix.py"), ("KOR", "scripts/korfix.py"), ("CLAUDIA", "scripts/claudiafix.py"), ("KOR", "scripts/korfix2.py"), ("JCT", "scripts/jctfix.py"), ("KOR", "scripts/korfix3.py"), ("NVIDIA", "scripts/nvdafix.py"), ("MSTRSTOCK", "scripts/mstrfix.py"),
+         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("AKE", "scripts/akefix.py"), ("AIN", "scripts/ainfix.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"), ("BIRB", "scripts/auto.py BIRB"), ("BIRB", "scripts/birbfix.py"), ("UAI", "scripts/uaifix.py"), ("KOR", "scripts/korfix.py"), ("CLAUDIA", "scripts/claudiafix.py"), ("KOR", "scripts/korfix2.py"), ("JCT", "scripts/jctfix.py"), ("KOR", "scripts/korfix3.py"), ("NVIDIA", "scripts/nvdafix.py"), ("MSTRSTOCK", "scripts/mstrfix.py"), ("JCT", "scripts/jctfix2.py"),
          ("AIN", "scripts/wallet.py AIN"), ("BTW", "scripts/wallet.py BTW"), ("UAI", "scripts/wallet.py UAI"), ("JCT", "scripts/wallet.py JCT"), ("H", "scripts/wallet.py H")]  # whale-wallet watches added 2026-11-05
 def setups():
     for sym, script in WATCH:
