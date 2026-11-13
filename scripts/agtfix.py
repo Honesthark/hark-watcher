@@ -1,8 +1,8 @@
 # AGT pullback short (user's own setup, 2026-11-13 06:41 WAT, "yes" to add). Price 0.0504 after 0.024->0.0876 pump, 24h low 0.04627.
 # A (rejection): a closed 1h candle trades 0.052+ (under 0.0605) and closes back under 0.052. Entry 0.052-0.054, SL 0.0605, TP1 0.0475, TP2 0.038. Cancel on a 1h close above 0.0605.
-# Heads-up once when price is 0.051-0.052. Expires Sun 2026-11-15 07:00 WAT.
+# Heads-up once when price is 0.051-0.052. Expires Mon 2026-11-16 07:00 WAT.
 import json, os, time, urllib.request, datetime as dt
-ST = "state/agtfix.json"; EXP = 1794722400
+ST = "state/agtfix.json"; EXP = 1794808800
 s = json.load(open(ST)) if os.path.exists(ST) else {"last": 1794546000 - 3600, "a": False, "ha": False}
 H = {"User-Agent": "curl/8.5.0"}
 u = f"https://contract.mexc.com/api/v1/contract/kline/AGT_USDT?interval=Min60&start={int(time.time()) - 12 * 3600}&end={int(time.time())}"
