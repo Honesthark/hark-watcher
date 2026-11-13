@@ -13,7 +13,7 @@ NOTE = {"AIN": "AIN wicks 15-20% in an hour.", "Q": "Q is a low-cap pump coin wi
         "BTW": "BTW has a thin book and huge wicks.", "IRYS": "IRYS has very thin books and huge wicks.",
         "EVAA": "EVAA just wicked +23% in one hour, so stops can get run.",
         "STRK": "STRK has a big unlock around Nov 13-15 and 30M just hit Bybit, but rallies on news can be sharp.",
-        "AKE": "AKE is deeply oversold after a -31% day, and relief bounces can be sharp, so stops get run.",
+        "AKE": "AKE ran +215% in a day (0.0026 to 0.00945), so squeezes and wicks are violent.",
         "CLANKER": "CLANKER ran +35% in a day, so swings and squeezes are violent.",
         "UAI": "UAI more than doubled today and 3.9M just hit Gate + MEXC, so wicks both ways are violent.",
         "BIRB": "BIRB is up ~30% today and 2M (~$219k) just went into Gate, so expect sell pressure and squeezes (funding negative).",
@@ -274,7 +274,8 @@ MISS = {"scripts/ainfix.py": [("a", "SHORT", 0.112, "Setup A", "0.128-0.132"), (
         "scripts/mstrfix.py": [("a", "SHORT", 120, "Rejection short", "124-125")],
         "scripts/jctfix2.py": [("a", "SHORT", 0.0042, "Rejection short", "0.0047-0.0049")],
         "scripts/btwfix.py": [("a", "SHORT", 0.80, "Bounce short", "0.87-0.89")],
-        "scripts/agtfix.py": [("a", "SHORT", 0.0475, "Pullback short", "0.052-0.054")]}
+        "scripts/agtfix.py": [("a", "SHORT", 0.0475, "Pullback short", "0.052-0.054")],
+        "scripts/akefix2.py": [("a", "SHORT", 0.0060, "Fade short", "0.0066-0.0068")]}
 MS = "state/missed.json"
 missed = json.load(open(MS)) if os.path.exists(MS) else []
 
@@ -305,7 +306,7 @@ check_trades()
 # ---- setup watchers ----
 # All setup levels follow price (scripts/autolv.py, 2026-11-04). auto.py SYM = levels only; ake/btw/strk add their extras.
 WATCH = [("AIN", "scripts/auto.py AIN"), ("Q", "scripts/auto.py Q"), ("BTW", "scripts/btw.py"), ("IRYS", "scripts/auto.py IRYS"),
-         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("AKE", "scripts/akefix.py"), ("AIN", "scripts/ainfix.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"), ("BIRB", "scripts/auto.py BIRB"), ("BIRB", "scripts/birbfix.py"), ("UAI", "scripts/uaifix.py"), ("KOR", "scripts/korfix.py"), ("CLAUDIA", "scripts/claudiafix.py"), ("KOR", "scripts/korfix2.py"), ("JCT", "scripts/jctfix.py"), ("KOR", "scripts/korfix3.py"), ("NVIDIA", "scripts/nvdafix.py"), ("MSTRSTOCK", "scripts/mstrfix.py"), ("JCT", "scripts/jctfix2.py"), ("BTW", "scripts/btwfix.py"), ("AGT", "scripts/agtfix.py"),
+         ("EVAA", "scripts/auto.py EVAA"), ("AKE", "scripts/ake.py"), ("AKE", "scripts/akefix.py"), ("AIN", "scripts/ainfix.py"), ("STRK", "scripts/strk.py"), ("CLANKER", "scripts/auto.py CLANKER"), ("KOR", "scripts/auto.py KOR"), ("BIRB", "scripts/auto.py BIRB"), ("BIRB", "scripts/birbfix.py"), ("UAI", "scripts/uaifix.py"), ("KOR", "scripts/korfix.py"), ("CLAUDIA", "scripts/claudiafix.py"), ("KOR", "scripts/korfix2.py"), ("JCT", "scripts/jctfix.py"), ("KOR", "scripts/korfix3.py"), ("NVIDIA", "scripts/nvdafix.py"), ("MSTRSTOCK", "scripts/mstrfix.py"), ("JCT", "scripts/jctfix2.py"), ("BTW", "scripts/btwfix.py"), ("AGT", "scripts/agtfix.py"), ("AKE", "scripts/akefix2.py"),
          ("AIN", "scripts/wallet.py AIN"), ("BTW", "scripts/wallet.py BTW"), ("UAI", "scripts/wallet.py UAI"), ("JCT", "scripts/wallet.py JCT"), ("H", "scripts/wallet.py H")]  # whale-wallet watches added 2026-11-05
 def setups():
     for sym, script in WATCH:
