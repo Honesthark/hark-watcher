@@ -1,8 +1,8 @@
 # AKE blow-off rejection short v2 (user "yes" 2026-11-13 17:06 WAT). akefix2 cancelled; high 0.01237, last 0.01126.
 # Trigger: a closed 1h candle closes under 0.0099 (back under the 0.0099 ask). Entry 0.0097-0.0100, SL 0.0128, TP1 0.0078, TP2 0.0063.
-# Cancel on a 1h close above 0.0128. Heads-up once at 0.0100-0.0105. Expires Sun 2026-11-15 07:00 WAT.
+# Cancel on a 1h close above 0.0128. Heads-up once at 0.0100-0.0105. Expires Sun 2026-11-22 07:00 WAT (extended 2026-11-14 for Nov 21 unlock).
 import json, os, time, urllib.request, datetime as dt
-ST = "state/akefix3.json"; EXP = 1794722400
+ST = "state/akefix3.json"; EXP = 1795327200
 s = json.load(open(ST)) if os.path.exists(ST) else {"last": 1794585600 - 3600, "a": False, "ha": False}
 H = {"User-Agent": "curl/8.5.0"}
 u = f"https://contract.mexc.com/api/v1/contract/kline/AKE_USDT?interval=Min60&start={int(time.time()) - 12 * 3600}&end={int(time.time())}"
