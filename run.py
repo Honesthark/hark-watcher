@@ -409,6 +409,7 @@ def handle_signals(out):
 # ---- NVDA post-close reversal (once per weekday, 16:00-16:30 New York time) ----
 def handle_closerev(out):
   for l in out.splitlines():
+      if l.startswith("NOTICE "): send(l[7:]); continue   # skip-day notice (e.g. earnings night), no trade card
       if not l.startswith("CLOSEREV"): continue
       f = l.split(); side = f[1]; up = side == "LONG"
       p = dict(zip(f[2::2], f[3::2]))
