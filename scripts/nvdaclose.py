@@ -29,6 +29,9 @@ if not c16 or not c15 or not live or c16 == c15:
 mv = c16 / c15 - 1
 side = "SHORT" if mv > 0 else "LONG"; dd = 1 if side == "LONG" else -1
 st["d"] = str(now.date()); json.dump(st, open(S, "w"))
+SKIP = {"2026-11-17": "NVIDIA reports Q3 earnings at 4:20 pm New York (22:20 WAT), inside the 1-hour hold"}  # user asked 2026-11-16: skip, notify instead
+if str(now.date()) in SKIP:
+    print(f"NOTICE 📰 NVDA post-close signal SKIPPED today. {SKIP[str(now.date())]}. Last hour into the close: {mv*100:+.2f}% ({c15:.2f} → {c16:.2f}), now {live:.2f}. Normal rule would say {side}, but earnings can gap NVDA 5-10% either way. No trade tracked."); sys.exit()
 exp = int(time.time()) + 3600
 wat = lambda ts: time.strftime("%H:%M", time.gmtime(ts + 3600))
 print(f"CLOSEREV {side} move {mv*100:+.2f} c15 {c15:.2f} c16 {c16:.2f} entry {live:.2f} SL {live*(1-dd*0.01):.2f} TP1 {live*(1+dd*0.01):.2f} TP2 {live*(1+dd*0.015):.2f} exp {exp} exit {wat(exp)}")
