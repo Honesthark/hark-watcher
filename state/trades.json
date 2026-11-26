@@ -1,1 +1,1 @@
-[]
+[{"sym": "STRK", "label": "Auto, bounced off 4h low", "side": "LONG", "entry": 0.03054, "sl": 0.030284, "tp1": 0.030796, "tp2": 0.031052, "t": 1795677388.0572925, "chk": 1795678200, "tp1hit": false, "sitout": false}, {"sym": "CLANKER", "label": "Auto, bounced off 4h low", "side": "LONG", "entry": 10.44, "sl": 10.3773, "tp1": 10.5027, "tp2": 10.5654, "t": 1795677389.0933301, "chk": 1795678200, "tp1hit": false, "sitout": false}]
