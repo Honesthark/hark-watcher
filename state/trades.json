@@ -1,1 +1,1 @@
-[{"sym": "AIN", "label": "Auto, bounced off 4h low", "side": "LONG", "entry": 0.0966, "sl": 0.0937643, "tp1": 0.0994357, "tp2": 0.102271, "t": 1795707985.2005272, "chk": 1795717500, "tp1hit": true, "sitout": false}]
+[{"sym": "AIN", "label": "fade short", "side": "SHORT", "entry": 0.09757, "sl": 0.103761, "tp1": 0.0882838, "tp2": 0.08664, "t": 1795718151.2051306, "chk": 1795721100, "tp1hit": false, "sitout": false}]
